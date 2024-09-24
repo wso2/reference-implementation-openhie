@@ -7,7 +7,7 @@ http:InterceptableService httpService = service object {
         return [new ValidateInterceptor(), new LoggingInterceptor()];
     }
 
-    isolated resource function 'default .(http:Caller caller, http:Request req) returns error? {
+    isolated resource function 'default [string... path](http:Caller caller, http:Request req) returns error? {
         // TODO: pass the request to the router
 
         // json|error payload = req.getJsonPayload();
