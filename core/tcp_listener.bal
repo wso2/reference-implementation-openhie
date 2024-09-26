@@ -11,13 +11,17 @@ tcp:Service tcpService = service object {
 service class TcpService {
     *tcp:ConnectionService;
 
-    remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error? {
-        // TODO: pass the data to the router
+    remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error?|error {
+        // TODO: 
+        // - pass the data to the router
+
+        string tcpRequest = check string:fromBytes(data);
 
         // io:println("Received data over TCP: ", string:fromBytes(data));
         // string responseMessage = "Data received successfully.";
         // check caller->writeBytes(responseMessage.toBytes());
         // io:println("Response sent to TCP client.");
+
     }
 
     remote function onClose() {
