@@ -1,15 +1,15 @@
 import ballerina/io;
 
-configurable int HTTP_PORT = ?;
-configurable int TCP_PORT = ?;
+configurable Ports ports = ?;
 
 public function main() returns error? {
 
-    check startHttpListener(HTTP_PORT);
-    check startTcpListener(TCP_PORT);
+    check startHttpListener(ports.HTTP_PORT);
+    check startTcpListener(ports.TCP_PORT);
 
     io:println("Services started successfully.");
 
+    // check saveAuditMessage(test_generateAuditMessage());
     while true {
     }
 }

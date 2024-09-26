@@ -4,21 +4,13 @@ import ballerina/io;
 http:InterceptableService httpService = service object {
 
     public function createInterceptors() returns http:RequestInterceptor[] {
-        return [new ValidateInterceptor(), new LoggingInterceptor()];
+        io:println("Creating http interceptors...");
+        return [new ValidateInterceptor(), new AuditInterceptor()];
     }
 
     isolated resource function 'default [string... path](http:Caller caller, http:Request req) returns error? {
-        // TODO: pass the request to the router
-
-        // json|error payload = req.getJsonPayload();
-        // if payload is json {
-        //     string response = "Received: " + payload.toJsonString();
-        //     check caller->respond(response);
-        //     io:println("HTTP Request processed successfully with payload: ", response);
-        // } else if payload is error {
-        //     io:println("Error while processing HTTP request: ", payload.detail());
-        //     check caller->respond("Invalid JSON payload");
-        // }
+        http:Response response = check routeHttp(req);
+        check caller->respond(response);
     }
 };
 
