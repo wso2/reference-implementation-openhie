@@ -18,4 +18,3 @@ public isolated function getPayload(http:Request req) returns Payload|error {
 
     return error("Unsupported payload type");
 }
-
