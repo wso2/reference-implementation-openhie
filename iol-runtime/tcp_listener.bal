@@ -1,9 +1,9 @@
-import ballerina/io;
+import ballerina/log;
 import ballerina/tcp;
 
 tcp:Service tcpService = service object {
     remote function onConnect(tcp:Caller caller) returns tcp:ConnectionService {
-        io:println("New TCP client connected.");
+        log:printInfo("New TCP client connected.");
         return new TcpService();
     }
 };
@@ -25,16 +25,16 @@ service class TcpService {
     }
 
     remote function onClose() {
-        io:println("TCP client connection closed.");
+        log:printInfo("TCP client connection closed.");
     }
 
     remote function onError(tcp:Error err) {
-        io:println("TCP error occurred: ", err.message());
+        log:printInfo(string `TCP error occurred: ${err.message()}`);
     }
 }
 
 public function startTcpListener(int port) returns error? {
-    io:println("Starting TCP listener on port: ", port);
+    log:printInfo(string `Starting TCP listener on port: ${port} `);
     tcp:Listener tcpListener = check new (port);
     check tcpListener.attach(tcpService, "/");
     check tcpListener.'start();

@@ -1,6 +1,6 @@
 [package]
 org = "wso2"
-name = "core"
+name = "IOL_Runtime"
 version = "0.1.0"
 distribution = "2201.9.3"
 
