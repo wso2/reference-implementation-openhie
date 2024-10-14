@@ -5,9 +5,16 @@ http:InterceptableService httpService = service object {
     public function createInterceptors() returns http:Interceptor[] {
         log:printInfo("Creating http interceptors...");
         return [
+            // transformers
             new MessageBuilderInterceptor(),
             new MessageFormatterIntercepter(),
-            new AttributesValidatorInterceptor()
+
+            // validators
+            new RequestValidatorInterceptor(),
+            new ResponseValidatorInterceptor(),
+
+            // enforcers
+            new SanctionCheckEnforcerInterceptor()
         ];
     }
 

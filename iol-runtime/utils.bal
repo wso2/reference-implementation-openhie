@@ -45,3 +45,6 @@ public isolated function extractUserDetails(http:Request httpRequest) returns ma
     }
 }
 
+public function splitString(string str, string delimiter) returns string[] {
+    return re `${delimiter}`.split(str);
+}

@@ -13,6 +13,8 @@ public function main() returns error? {
     check startHttpListener(ports.HTTP_LISTENER_PORT);
     check startTcpListener(ports.TCP_LISTENER_PORT);
     log:printInfo("Services started successfully.");
+    check audit_request(PATIENT_DEMOGRAPHICS_QUERY, "admin", "patientID", "IOL-ref-impl v0.1");
+
     waitForShutdownSignal();
 }
 

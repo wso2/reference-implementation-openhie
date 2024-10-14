@@ -85,9 +85,21 @@ dependencies = [
 	{org = "ballerina", name = "time"},
 	{org = "ballerina", name = "url"}
 ]
+
+[[package]]
+org = "ballerina"
+name = "in_memory_hub"
+version = "1.0.0"
+dependencies = [
+	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "time"},
+	{org = "ballerina", name = "websubhub"}
+]
 modules = [
-	{org = "ballerina", packageName = "http", moduleName = "http"},
-	{org = "ballerina", packageName = "http", moduleName = "http.httpscerr"}
+	{org = "ballerina", packageName = "in_memory_hub", moduleName = "in_memory_hub"},
+	{org = "ballerina", packageName = "in_memory_hub", moduleName = "in_memory_hub.dispatcher"},
+	{org = "ballerina", packageName = "in_memory_hub", moduleName = "in_memory_hub.message_queue"},
+	{org = "ballerina", packageName = "in_memory_hub", moduleName = "in_memory_hub.store"}
 ]
 
 [[package]]
@@ -97,9 +109,6 @@ version = "1.6.1"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.value"}
-]
-modules = [
-	{org = "ballerina", packageName = "io", moduleName = "io"}
 ]
 
 [[package]]
@@ -143,15 +152,6 @@ dependencies = [
 org = "ballerina"
 name = "lang.decimal"
 version = "0.0.0"
-dependencies = [
-	{org = "ballerina", name = "jballerina.java"}
-]
-
-[[package]]
-org = "ballerina"
-name = "lang.error"
-version = "0.0.0"
-scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -269,24 +269,13 @@ dependencies = [
 
 [[package]]
 org = "ballerina"
-name = "test"
-version = "0.0.0"
-scope = "testOnly"
-dependencies = [
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "lang.array"},
-	{org = "ballerina", name = "lang.error"}
-]
-modules = [
-	{org = "ballerina", packageName = "test", moduleName = "test"}
-]
-
-[[package]]
-org = "ballerina"
 name = "time"
 version = "2.5.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "ballerina", packageName = "time", moduleName = "time"}
 ]
 
 [[package]]
@@ -307,165 +296,25 @@ dependencies = [
 	{org = "ballerina", name = "lang.int"},
 	{org = "ballerina", name = "time"}
 ]
-modules = [
-	{org = "ballerina", packageName = "uuid", moduleName = "uuid"}
-]
 
 [[package]]
 org = "ballerina"
-name = "websub"
-version = "2.11.0"
+name = "websubhub"
+version = "1.11.0"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "jwt"},
 	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "lang.string"},
-	{org = "ballerina", name = "lang.value"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "mime"},
-	{org = "ballerina", name = "time"},
-	{org = "ballerina", name = "url"}
-]
-modules = [
-	{org = "ballerina", packageName = "websub", moduleName = "websub"}
-]
-
-[[package]]
-org = "ballerinai"
-name = "observe"
-version = "0.0.0"
-dependencies = [
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "observe"}
-]
-modules = [
-	{org = "ballerinai", packageName = "observe", moduleName = "observe"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "health.base"
-version = "1.0.3"
-dependencies = [
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "jwt"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "mime"},
-	{org = "ballerina", name = "time"},
+	{org = "ballerina", name = "url"},
 	{org = "ballerina", name = "uuid"}
 ]
-
-[[package]]
-org = "ballerinax"
-name = "health.fhir.r4"
-version = "5.1.1"
-dependencies = [
-	{org = "ballerina", name = "constraint"},
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "jwt"},
-	{org = "ballerina", name = "lang.regexp"},
-	{org = "ballerina", name = "lang.value"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "time"},
-	{org = "ballerina", name = "url"},
-	{org = "ballerina", name = "uuid"},
-	{org = "ballerinax", name = "health.base"}
-]
 modules = [
-	{org = "ballerinax", packageName = "health.fhir.r4", moduleName = "health.fhir.r4"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "health.fhir.r4.international401"
-version = "2.1.1"
-dependencies = [
-	{org = "ballerina", name = "constraint"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerinax", name = "health.fhir.r4"}
-]
-modules = [
-	{org = "ballerinax", packageName = "health.fhir.r4.international401", moduleName = "health.fhir.r4.international401"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "health.fhir.r4.parser"
-version = "5.1.0"
-dependencies = [
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerinax", name = "health.fhir.r4"},
-	{org = "ballerinax", name = "health.fhir.r4.international401"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "health.fhir.r4.terminology"
-version = "4.1.1"
-dependencies = [
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "lang.int"},
-	{org = "ballerina", name = "lang.regexp"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "time"},
-	{org = "ballerinax", name = "health.fhir.r4"},
-	{org = "ballerinax", name = "health.fhir.r4.international401"},
-	{org = "ballerinax", name = "health.fhir.r4.validator"}
-]
-modules = [
-	{org = "ballerinax", packageName = "health.fhir.r4.terminology", moduleName = "health.fhir.r4.terminology"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "health.fhir.r4.validator"
-version = "4.2.2"
-dependencies = [
-	{org = "ballerina", name = "constraint"},
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "lang.regexp"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerinax", name = "health.fhir.r4"},
-	{org = "ballerinax", name = "health.fhir.r4.international401"},
-	{org = "ballerinax", name = "health.fhir.r4.parser"}
-]
-
-[[package]]
-org = "ballerinax"
-name = "mongodb"
-version = "5.0.0"
-dependencies = [
-	{org = "ballerina", name = "crypto"},
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "log"}
-]
-modules = [
-	{org = "ballerinax", packageName = "mongodb", moduleName = "mongodb"}
-]
-
-[[package]]
-org = "wso2"
-name = "FhirAuditService"
-version = "1.0.0"
-dependencies = [
-	{org = "ballerina", name = "http"},
-	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "test"},
-	{org = "ballerina", name = "uuid"},
-	{org = "ballerina", name = "websub"},
-	{org = "ballerinai", name = "observe"},
-	{org = "ballerinax", name = "health.fhir.r4"},
-	{org = "ballerinax", name = "health.fhir.r4.international401"},
-	{org = "ballerinax", name = "health.fhir.r4.terminology"},
-	{org = "ballerinax", name = "mongodb"}
-]
-modules = [
-	{org = "wso2", packageName = "FhirAuditService", moduleName = "FhirAuditService"}
+	{org = "ballerina", packageName = "websubhub", moduleName = "websubhub"}
 ]
 
