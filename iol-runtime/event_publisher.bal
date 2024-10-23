@@ -7,7 +7,7 @@ final string[] topics = [
     "audit"
 ];
 
-function init() returns error? {
+public function registerWebSubHubTopics() returns error? {
     log:printInfo("WebSubHub Publisher Client created successfully.");
     foreach var topic in topics {
         lock {

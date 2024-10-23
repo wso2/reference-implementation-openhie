@@ -1,12 +1,18 @@
 import ballerina/http;
 
+public type SystemInfo record {|
+    string SYSNAME;
+|};
+
 public type Ports record {|
     int HTTP_LISTENER_PORT;
     int TCP_LISTENER_PORT;
 |};
 
 public enum workflow {
-    PATIENT_DEMOGRAPHICS_QUERY
+    PATIENT_DEMOGRAPHICS_QUERY,
+    PATIENT_DEMOGRAPHICS_UPDATE,
+    PATIENT_DEMOGRAPHICS_CREATE
 }
 
 public type UserDetails record {
@@ -17,6 +23,8 @@ public type UserDetails record {
 
 type GenericRoute record {|
     string target;
+    HttpAuthConfig auth?;
+    workflow workflow;
 |};
 
 public type HttpAuthConfig http:CredentialsConfig|http:OAuth2ClientCredentialsGrantConfig|http:BearerTokenConfig|http:JwtIssuerConfig;
@@ -26,9 +34,35 @@ public type HttpRoute record {|
     string path;
     string[] methods;
     string contentType?;
-    HttpAuthConfig auth?;
-    workflow workflow;
+
 |};
+
+public type TcpRoute record {|
+    *GenericRoute;
+    string HL7Code;
+    string method;
+|};
+
+public type TcpInternalPayload record {|
+    json fhirMessage;
+    string eventCode;
+|};
+
+public type TcpRequestContext record {|
+    json fhirMessage;
+    string eventCode;
+    string msgId;
+    string patientId;
+    string sendingFacility;
+    string receivingFacility;
+    string sendingApplication;
+    string receivingApplication;
+|};
+
+public type TcpResponseContext record {
+    http:Response httpResponse;
+    workflow workflow;
+};
 
 public type InternalAuditEvent record {|
     // Value Set http://hl7.org/fhir/ValueSet/audit-event-type

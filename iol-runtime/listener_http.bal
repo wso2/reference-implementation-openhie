@@ -18,8 +18,8 @@ http:InterceptableService httpService = service object {
         ];
     }
 
-    isolated resource function 'default [string... path](http:Caller caller, http:Request req) returns error? {
-        http:Response response = check routeHttp(req);
+    isolated resource function 'default [string... path](http:Caller caller, http:Request req, http:RequestContext ctx) returns error? {
+        http:Response response = check routeHttp(req, ctx);
         check caller->respond(response);
     }
 };
