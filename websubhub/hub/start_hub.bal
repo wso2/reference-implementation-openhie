@@ -19,7 +19,7 @@ import in_memory_hub.dispatcher;
 import ballerina/log;
 import ballerina/websubhub;
 
-configurable int HUB_PORT = 9090;
+configurable int HUB_PORT = ?;
 listener websubhub:Listener hubListener = check new (HUB_PORT);
 
 public function main() returns error? {

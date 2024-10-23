@@ -123,15 +123,6 @@ public function splitString(string str, string delimiter) returns string[] {
     return re `${delimiter}`.split(str);
 }
 
-isolated function fhirToHL7PatientResponse(json payload) returns string {
-
-    // TODO: write fhir to hl7 converter
-    // anydata parsedResult = check parser:parse(payload);
-    // international401:Patient patientModel = check parsedResult.ensureType();
-
-    return payload.toString();
-}
-
 isolated function createHL7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns string {
     string hl7Version = "2.4";
     string timestamp = time:utcToString(time:utcNow()); // TODO: correct the format : yyyyMMddHHmmss

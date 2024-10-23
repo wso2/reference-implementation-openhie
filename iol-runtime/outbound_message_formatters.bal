@@ -1,5 +1,7 @@
 import ballerina/http;
 import ballerina/io;
+import ballerinax/health.fhir.r4.international401;
+import ballerinax/health.fhir.r4.parser;
 
 public isolated function getHTTPMessageFormatter(string in_contentType) returns HTTPMessageFormatter|error {
     map<HTTPMessageFormatter> messageFormatters = {
@@ -53,8 +55,12 @@ public class fhirToHL7Formatter {
             }
             http:STATUS_OK => {
                 if workflow == PATIENT_DEMOGRAPHICS_QUERY {
-                    // TODO: convert the FHIR message to HL7 and send it back
-                    return fhirToHL7PatientResponse(check res.getJsonPayload()).toBytes();
+                    // parse the json payload to a FHIR Patient resource
+                    international401:Patient fhirPatient = check parser:parse(check res.getJsonPayload()).ensureType();
+
+                    // Convert FHIR patient to HL7v2 message
+                    string hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
+                    return hl7msg.toBytes();
                 }
                 return createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource updated successfully!").toBytes();
             }
