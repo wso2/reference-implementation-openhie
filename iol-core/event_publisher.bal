@@ -39,7 +39,7 @@ function isHubReachable(string hubUrl) returns boolean {
         http:Client hubClient = check new (hubUrl);
         http:Response response = check hubClient->get("/");
         return true;
-    } on fail error e {
+    } on fail {
         return false;
     }
 }
