@@ -10,16 +10,14 @@ public isolated service class MessageBuilderInterceptor {
         byte[] payload = check Newreq.getBinaryPayload();
         req.setPayload(payload, Newreq.getContentType());
 
+        // TODO: Extract user details
+        // TODO: Extract Patient details
         // var userDetails = check extractUserDetails(req);
-        // io:println("User Details: ", userDetails);
-
-        // // TODO: Extract userDetails from the request
-        // string patientID = path.length() > 1 ? path[1] : "";
         UserDetails userDetails = {username: "test_username", userRole: "test_userRole"};
-
         ctx.set("username", userDetails.username);
         ctx.set("userRole", userDetails.userRole);
-        ctx.set("patientID", "0000");
+        ctx.set("patientId", "0000");
+
         return ctx.next();
     }
 }

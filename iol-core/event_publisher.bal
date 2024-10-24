@@ -2,15 +2,14 @@ import ballerina/http;
 import ballerina/log;
 import ballerina/websubhub;
 
-configurable string WEBSUB_HUB_URL = ?;
-isolated websubhub:PublisherClient websubHubClientEP = check new (WEBSUB_HUB_URL);
+isolated websubhub:PublisherClient websubHubClientEP = check new (externalServices.WEBSUB_HUB_URL);
 final string[] topics = [
     "audit"
 ];
 
 public function registerWebSubHubTopics() returns error? {
     log:printInfo("WebSubHub Publisher Client created successfully.");
-    if (!isHubReachable(WEBSUB_HUB_URL)) {
+    if (!isHubReachable(externalServices.WEBSUB_HUB_URL)) {
         log:printError("WebSubHub is not reachable.");
         return;
     }

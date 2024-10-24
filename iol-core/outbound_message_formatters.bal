@@ -1,5 +1,5 @@
 import ballerina/http;
-import ballerina/io;
+import ballerina/log;
 import ballerinax/health.fhir.r4.international401;
 import ballerinax/health.fhir.r4.parser;
 
@@ -23,7 +23,7 @@ public class FhirToJsonFormatter {
     *HTTPMessageFormatter;
 
     public isolated function init() {
-        io:println("JSONToXMLFormatter initialized");
+        log:printInfo("JSONToXMLFormatter initialized");
     }
 
     public isolated function format(http:Response res) returns http:Response|error {
@@ -36,13 +36,12 @@ public class fhirToHL7Formatter {
     *TCPMessageFormatter;
 
     public isolated function init() {
-        io:println("Created an instance of fhirToHL7Formatter");
+        log:printInfo("Created an instance of fhirToHL7Formatter");
     }
 
     public isolated function format(TcpResponseContext|error resCtx, TcpRequestContext reqCtx) returns byte[]|error {
 
         if resCtx is error {
-            // TODO: get msgID
             return createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, resCtx.message()).toBytes();
         }
         http:Response res = resCtx.httpResponse;
@@ -55,11 +54,7 @@ public class fhirToHL7Formatter {
             }
             http:STATUS_OK => {
                 if workflow == PATIENT_DEMOGRAPHICS_QUERY {
-                    // parse the json payload to a FHIR Patient resource
                     international401:Patient fhirPatient = check parser:parse(check extractPatientResource(check res.getJsonPayload())).ensureType();
-
-                    io:println("FHIR Patient resource parsed successfully", fhirPatient);
-                    // Convert FHIR patient to HL7v2 message
                     string hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
                     return hl7msg.toBytes();
                 }

@@ -1,5 +1,9 @@
 import ballerina/http;
 
+public type ExternalServices record {|
+    string WEBSUB_HUB_URL;
+|};
+
 public type SystemInfo record {|
     string SYSNAME;
 |};
