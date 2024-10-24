@@ -64,7 +64,13 @@ isolated function extractHL7MessageType(string message) returns string {
 }
 
 isolated function extractPatientId(string message) returns string {
-    string? pidField = extractHL7Field(message, 3, 2) ?: "";
+    string? pidField;
+    if (extractHL7MessageType(message) == "QBP^Q21") {
+        pidField = extractHL7Field(message, 3, 1) ?: "";
+    } else {
+        pidField = extractHL7Field(message, 3, 2) ?: "";
+    }
+
     if pidField is string {
         string[] fields = re `\^\^\^`.split(pidField);
         return fields.length() > 0 ? fields[0] : "";
@@ -125,10 +131,10 @@ public function splitString(string str, string delimiter) returns string[] {
 
 isolated function createHL7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns string {
     string hl7Version = "2.4";
-    string timestamp = time:utcToString(time:utcNow()); // TODO: correct the format : yyyyMMddHHmmss
+    string timestamp = getCurrentTimestamp();
 
     // Construct MSH (Message Header) segment
-    string mshSegment = string `MSH|^~\\&|${sendingApp}|${sendingFacility}|${receivingApp}|${receivingFacility}|${timestamp}||ACK^${messageType}|${messageID}|P|${hl7Version}|`;
+    string mshSegment = string `MSH|^~\\&|${sendingApp}|${sendingFacility}|${receivingApp}|${receivingFacility}|${timestamp}||${messageType}|${messageID}|P|${hl7Version}|`;
 
     // Construct MSA (Message Acknowledgment) segment
     string msaSegment = string `MSA|${statusCode}|${messageID}|${details}`;
@@ -137,3 +143,45 @@ isolated function createHL7AckMessage(string sendingFacility, string receivingFa
     string ackMessage = string `${mshSegment}\n${msaSegment}`;
     return ackMessage;
 }
+
+// Utility function to get current timestamp in HL7v2 format (YYYYMMDDHHMMSS)
+public isolated function getCurrentTimestamp() returns string {
+    time:Utc currentTime = time:utcNow();
+    return formatTimestamp(currentTime);
+}
+
+isolated function formatTimestamp(time:Utc timestamp) returns string {
+    // Convert the UTC timestamp to a time:Civil record (this includes both date and time fields)
+    time:Civil civil = time:utcToCivil(timestamp);
+
+    // Extract the year, month, day, and time components
+    string year = civil.year.toString();
+    string month = civil.month < 10 ? "0" + civil.month.toString() : civil.month.toString();
+    string day = civil.day < 10 ? "0" + civil.day.toString() : civil.day.toString();
+
+    // Extract the time of day (hours, minutes, seconds)
+    string hour = civil.hour < 10 ? "0" + civil.hour.toString() : civil.hour.toString();
+    string minute = civil.minute < 10 ? "0" + civil.minute.toString() : civil.minute.toString();
+    string second = <int>civil.second < 10 ? "0" : (<int>civil.second).toString();
+
+    // Return the formatted timestamp as "YYYYMMDDHHMMSS"
+    return year + month + day + hour + minute + second;
+}
+
+public isolated function extractPatientResource(json FhirMessage) returns json|error {
+    // Extract the patient resource from the FHIR message
+    map<json> fhirMessage = check FhirMessage.ensureType();
+    // io:println(fhirMessage);
+    json[] entries = check fhirMessage["entry"].ensureType();
+
+    foreach var entry in entries {
+        map<json> 'resource = check entry.ensureType();
+        map<json> Resource = check 'resource["resource"].ensureType();
+        if (Resource["resourceType"] == "Patient") {
+
+            return Resource;
+        }
+    }
+    return error("Patient resource not found in the FHIR message");
+}
+

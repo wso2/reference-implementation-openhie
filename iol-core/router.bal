@@ -67,7 +67,6 @@ public isolated function routeHttp(http:Request req, http:RequestContext ctx) re
     if response is error {
         return createErrorResponse(502, string `Failed to forward the request to the Upstream Service: ${response.message()}`);
     }
-
     return response;
 }
 
@@ -81,12 +80,22 @@ public isolated function routeTCP(TcpRequestContext reqCtx) returns TcpResponseC
 
     // Create an HTTP client and request for forwarding
     http:Client _client = check getHTTPClient(route);
-    http:Request _req = createHTTPRequest(check extractPatientResource(reqCtx.fhirMessage), route.target, route.method);
-    io:println("payload: ", _req.getJsonPayload());
-
+    http:Request _req = check createHTTPRequest(route, reqCtx);
     // TODO: get user data from tcp message
-    check audit_request(route.workflow, "test-username", reqCtx.patientId, systemInfo.SYSNAME);
-    http:Response response = check _client->forward("/", _req);
+    // check audit_request(route.workflow, "test-username", reqCtx.patientId, systemInfo.SYSNAME);
+    http:Response|error response;
+    match route.method {
+        http:GET => {
+            io:println("GET request");
+            response = _client->get(_req.rawPath);
+        }
+        _ => {
+            response = _client->forward(_req.rawPath, _req);
+        }
+    }
+    if response is error {
+        return error("Failed to forward the request to the Upstream Service: " + response.message());
+    }
     TcpResponseContext responseContext = {
         httpResponse: response,
         workflow: route.workflow
@@ -95,8 +104,10 @@ public isolated function routeTCP(TcpRequestContext reqCtx) returns TcpResponseC
 }
 
 isolated function findRouteForHttpReq(string rawPath, string method) returns HttpRoute|error? {
+
     // Iterate through the configured routes to find a match
-    foreach var route in httpRoutes {
+    foreach var route in httpRoutes
+    {
         if route.methods.indexOf(method) != () {
             regexp:RegExp pathRegex = check regexp:fromString(route.path);
             boolean foundPath = rawPath.matches(pathRegex);
@@ -144,21 +155,25 @@ isolated function findRouteForTcpReq(TcpRequestContext reqCtx) returns TcpRoute|
 
 }
 
-isolated function createHTTPRequest(json payload, string target, string method) returns http:Request {
-    // Create a new HTTP request with payload, target, and method
+isolated function createHTTPRequest(TcpRoute route, TcpRequestContext reqCtx) returns http:Request|error {
     http:Request req = new;
+    req.rawPath = check setRequestParams(route.method, reqCtx);
+    if route.method == "GET" {
+        return req;
+    }
+    req.method = route.method;
+    json payload = check extractPatientResource(reqCtx.fhirMessage);
     req.setPayload(payload, "application/json");
-    req.rawPath = target;
-    req.method = method;
     return req;
 }
 
-isolated function extractPatientResource(json convertedFhirMessage) returns json|error {
-    // Extract the patient resource from the FHIR message
-    map<json> fhirMessage = check convertedFhirMessage.ensureType();
-    json[] entries = check fhirMessage["entry"].ensureType();
-    json entry = check entries[2].ensureType();
-    map<json> resource_ = check entry.ensureType();
-    json patientResource = check resource_["resource"].ensureType();
-    return patientResource;
+isolated function setRequestParams(string method, TcpRequestContext reqCtx) returns string|error {
+    if reqCtx.patientId != "" {
+        string path = "/?";
+        path = path + "patientId=" + reqCtx.patientId;
+        return path;
+    }
+    return "";
+
 }
+

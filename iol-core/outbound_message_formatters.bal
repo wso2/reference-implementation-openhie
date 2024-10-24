@@ -56,8 +56,9 @@ public class fhirToHL7Formatter {
             http:STATUS_OK => {
                 if workflow == PATIENT_DEMOGRAPHICS_QUERY {
                     // parse the json payload to a FHIR Patient resource
-                    international401:Patient fhirPatient = check parser:parse(check res.getJsonPayload()).ensureType();
+                    international401:Patient fhirPatient = check parser:parse(check extractPatientResource(check res.getJsonPayload())).ensureType();
 
+                    io:println("FHIR Patient resource parsed successfully", fhirPatient);
                     // Convert FHIR patient to HL7v2 message
                     string hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
                     return hl7msg.toBytes();
