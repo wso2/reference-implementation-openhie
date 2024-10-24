@@ -1,11 +1,7 @@
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/time;
-// import ballerinax/health.fhir.r4.international401;
-// import ballerinax/health.fhir.r4.parser;
 import ballerinax/health.hl7v2;
-
-// import ballerinax/health.hl7v23;
 
 const string X_JWT_HEADER = "Authorization";
 const string[] JWT_KEYS = ["username", "email", "roles", "id"];
@@ -109,18 +105,6 @@ isolated function extractHL7Field(string message, int fieldIndex, int segmentInd
     return ();
 }
 
-// public isolated getHL7MessageType(hl7v2:Message hl7Msg) returns string {
-//     // Extract the MSH segment from the HL7 message
-//     hl7v2:Segment mshSegment = check hl7Msg.getSegment("MSH");
-
-//     // Extract the message type from the MSH-9 field
-//     string messageType = check mshSegment.getField(9).toString();
-
-//     // Log the extracted message type
-//     log:printInfo(string `Extracted HL7 message type: ${messageType}`);
-
-// }
-
 public isolated function parseHl7Message(string data) returns hl7v2:Message|error {
     return check hl7v2:parse(data);
 }
@@ -169,9 +153,7 @@ isolated function formatTimestamp(time:Utc timestamp) returns string {
 }
 
 public isolated function extractPatientResource(json FhirMessage) returns json|error {
-    // Extract the patient resource from the FHIR message
     map<json> fhirMessage = check FhirMessage.ensureType();
-    // io:println(fhirMessage);
     json[] entries = check fhirMessage["entry"].ensureType();
 
     foreach var entry in entries {

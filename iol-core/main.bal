@@ -2,13 +2,8 @@ import ballerina/lang.runtime;
 import ballerina/log;
 
 configurable Ports ports = ?;
-
 public configurable SystemInfo systemInfo = ?;
 public configurable ExternalServices externalServices = ?;
-
-// final string NETWORK_ACCESS_POINT_ID = systemInfo.NETWORK_ACCESS_POINT_ID;
-// final string AUDIT_ENTERPRISE_SITE_ID = systemInfo.AUDIT_ENTERPRISE_SITE_ID;
-// final string SYSNAME = systemInfo.SYSNAME;
 
 function init() returns error? {
     check startHttpListener(ports.HTTP_LISTENER_PORT);
