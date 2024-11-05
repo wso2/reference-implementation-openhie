@@ -3,8 +3,12 @@ import ballerina/log;
 import ballerina/websubhub;
 
 isolated websubhub:PublisherClient websubHubClientEP = check new (externalServices.WEBSUB_HUB_URL);
+
+// topics to be registered with the WebSubHub
 final string[] topics = [
-    "audit"
+    "audit",
+    "opensearch transaction",
+    "opensearch audit"
 ];
 
 public function registerWebSubHubTopics() returns error? {
@@ -13,12 +17,11 @@ public function registerWebSubHubTopics() returns error? {
         log:printError("WebSubHub is not reachable.");
         return;
     }
-
     foreach var topic in topics {
         lock {
             websubhub:TopicRegistrationSuccess|websubhub:TopicRegistrationError registrationResponse = websubHubClientEP->registerTopic(topic);
             if (registrationResponse is websubhub:TopicRegistrationError) {
-                log:printError(string `topic : ${topic} is already registered.`);
+                log:printError(string `topic : ${topic} registeration failed.`);
                 return;
             }
         }
