@@ -52,55 +52,54 @@ isolated function getHTTPClient(HttpRoute|TcpRoute route) returns http:Client|er
 }
 
 // HTTP Routing
-public isolated function routeHttp(http:Request req, http:RequestContext ctx) returns http:Response|error {
-    HttpRoute? targetRoute = check findRouteForHttpRequest(req.rawPath, req.method);
-    if targetRoute is () {
-        return createHTTPErrorResponse(400, "Path not found: " + req.rawPath + " " + req.method);
-    }
-    http:Client _client = check getHTTPClient(targetRoute);
-    http:Request customReq = check createHTTPRequestforHTTP(req, targetRoute);
-    check audit_request(targetRoute.workflow, ctx.get("username").toString(), ctx.get("patientId").toString(), systemInfo.SYSNAME);
-    http:Response|error response = _client->forward(customReq.rawPath, customReq);
+public isolated function routeHttp(HTTPRequstContext reqCtx) returns ResponseContext|error {
+    do {
+        HttpRoute targetRoute = check findRouteForHttpRequest(reqCtx.httpRequest.rawPath, reqCtx.httpRequest.method);
+        http:Client _client = check getHTTPClient(targetRoute);
+        http:Request _req = check createHTTPRequestforHTTP(reqCtx.httpRequest, targetRoute);
+        check audit_request(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
+        http:Response|error response = _client->forward(_req.rawPath, _req);
 
-    if response is error {
-        return createHTTPErrorResponse(502, string `Failed to forward the request to the Upstream Service: ${response.message()}`);
+        if response is error {
+            return error(string `Failed to forward the request to the Upstream Service: ${response.message()}`);
+        }
+        ResponseContext responseContext = {response: response, route: targetRoute};
+        return responseContext;
+    } on fail error e {
+        return error("Something went wrong while processing: " + e.message());
     }
-    return response;
 }
 
 // TCP Routing
-public isolated function routeTCP(TcpRequestContext reqCtx) returns TcpResponseContext|error {
-    TcpRoute? targetRoute = check findRouteForTcpRequest(reqCtx);
-    if targetRoute is () {
-        return error("No route found for the given message type");
-    }
-    http:Client _client = check getHTTPClient(targetRoute);
-    http:Request _req = check createHTTPRequestforTCP(targetRoute, reqCtx);
-    // TODO: get user data from tcp message
-    check audit_request(targetRoute.workflow, "test-username", reqCtx.patientId, systemInfo.SYSNAME);
-    http:Response|error response;
+public isolated function routeTCP(TcpRequestContext reqCtx) returns ResponseContext|error {
+    do {
+        TcpRoute targetRoute = check findRouteForTcpRequest(reqCtx);
+        http:Client _client = check getHTTPClient(targetRoute);
+        http:Request _req = check createHTTPRequestforTCP(targetRoute, reqCtx);
+        check audit_request(targetRoute.workflow, "test-username", reqCtx.patientId, systemInfo.SYSNAME);
 
-    match targetRoute.method {
-        http:GET => {
-            response = _client->get(_req.rawPath);
+        http:Response|error response;
+        match targetRoute.method {
+            http:GET => {
+                response = _client->get(_req.rawPath);
+            }
+            _ => {
+                response = _client->forward(_req.rawPath, _req);
+            }
         }
-        _ => {
-            response = _client->forward(_req.rawPath, _req);
+        if response is error {
+            return error("Failed to forward the request to the Upstream Service: " + response.message());
         }
+        ResponseContext responseContext = {response: response, route: targetRoute};
+        return responseContext;
+    } on fail error e {
+        return error("Something went wrong while processing: " + e.message());
     }
-    if response is error {
-        return error("Failed to forward the request to the Upstream Service: " + response.message());
-    }
-    TcpResponseContext responseContext = {
-        httpResponse: response,
-        workflow: targetRoute.workflow
-    };
-    return responseContext;
 }
 
 // Helper Functions 
 
-isolated function findRouteForHttpRequest(string rawPath, string method) returns HttpRoute|error? {
+isolated function findRouteForHttpRequest(string rawPath, string method) returns HttpRoute|error {
     log:printInfo("Checking route for incoming HTTP request...");
     foreach var route in httpRoutes {
         if route.methods.indexOf(method) != () {
@@ -112,10 +111,10 @@ isolated function findRouteForHttpRequest(string rawPath, string method) returns
             }
         }
     }
-    return ();
+    return error("No route found for the given message type");
 }
 
-isolated function findRouteForTcpRequest(TcpRequestContext reqCtx) returns TcpRoute|error? {
+isolated function findRouteForTcpRequest(TcpRequestContext reqCtx) returns TcpRoute|error {
     log:printInfo("Checking route for incoming TCP request...");
     foreach var route in tcpRoutes {
         if route.HL7Code == reqCtx.eventCode {
@@ -123,7 +122,7 @@ isolated function findRouteForTcpRequest(TcpRequestContext reqCtx) returns TcpRo
             return route;
         }
     }
-    return ();
+    return error("No route found for the given message type");
 }
 
 isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqCtx) returns http:Request|error {
@@ -153,12 +152,5 @@ isolated function setRequestParams(string method, TcpRequestContext reqCtx) retu
         return path;
     }
     return "";
-}
-
-isolated function createHTTPErrorResponse(int statusCode, string message) returns http:Response {
-    http:Response response = new;
-    response.statusCode = statusCode;
-    response.setPayload({message: message});
-    return response;
 }
 

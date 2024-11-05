@@ -1,25 +1,9 @@
 import ballerina/http;
 import ballerina/log;
 
-http:InterceptableService httpService = service object {
-    public function createInterceptors() returns http:Interceptor[] {
-        log:printInfo("Creating http interceptors...");
-        return [
-            // transformers
-            new MessageBuilderInterceptor(),
-            new MessageFormatterIntercepter(),
-
-            // validators
-            new RequestValidatorInterceptor(),
-            new ResponseValidatorInterceptor(),
-
-            // enforcers
-            new SanctionCheckEnforcerInterceptor()
-        ];
-    }
-
+http:Service httpService = service object {
     isolated resource function 'default [string... path](http:Caller caller, http:Request req, http:RequestContext ctx) returns error? {
-        http:Response response = check routeHttp(req, ctx);
+        http:Response response = handleHTTP(req, caller);
         check caller->respond(response);
     }
 };

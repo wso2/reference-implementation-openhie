@@ -17,12 +17,6 @@ public enum workflow {
     PATIENT_DEMOGRAPHICS_QUERY,
     PATIENT_DEMOGRAPHICS_UPDATE,
     PATIENT_DEMOGRAPHICS_CREATE
-}
-
-public type UserDetails record {
-    string username;
-    string userRole;
-    string userRoleCode?;
 };
 
 type GenericRoute record {|
@@ -38,7 +32,6 @@ public type HttpRoute record {|
     string path;
     string[] methods;
     string contentType?;
-
 |};
 
 public type TcpRoute record {|
@@ -47,25 +40,31 @@ public type TcpRoute record {|
     string method;
 |};
 
-public type TcpInternalPayload record {|
-    json fhirMessage;
-    string eventCode;
-|};
+public type RequestContext record {
+    string username;
+    string patientId;
+    string contentType;
+};
 
 public type TcpRequestContext record {|
+    *RequestContext;
     json fhirMessage;
     string eventCode;
     string msgId;
-    string patientId;
     string sendingFacility;
     string receivingFacility;
     string sendingApplication;
     string receivingApplication;
 |};
 
-public type TcpResponseContext record {
-    http:Response httpResponse;
-    workflow workflow;
+public type HTTPRequstContext record {
+    *RequestContext;
+    http:Request httpRequest;
+};
+
+public type ResponseContext record {
+    http:Response response;
+    HttpRoute|TcpRoute route;
 };
 
 public type InternalAuditEvent record {|
@@ -96,41 +95,34 @@ public type InternalAuditEvent record {|
 
 |};
 
-// // Data types related to Transaction
-// public type requestLog record {|
-//     string host;
-//     string port;
-//     string path;
-//     // headers
-//     string payload;
-//     string method;
-//     time:Utc timestamp;
-// |};
+public type RequestLog record {|
+    string host;
+    int port;
+    string messageType;
+    string payload?;
+    string path?;
+    map<string> requestHeaders?;
+    string method?;
+    string timestamp;
+|};
 
-// # Description.
-// #
-// # + status - field description  
-// # + payload - field description  
-// # + timestamp - field description
-// public type responseLog record {|
-//     int status;
-//     // headers
-//     string payload;
-//     time:Utc timestamp;
-// |};
+public type ResponseLog record {|
+    string status;
+    string payload;
+    map<string> responseHeaders?;
+    string timestamp;
+|};
 
-// public type Transaction record {|
-//     string clientId;
-//     TransactionStatus status;
-//     requestLog requestPayload?;
-//     responseLog responsePayload?;
-//     map<string> requestHeaders;
-//     map<string> responseHeaders;
-//     boolean isSuccess;
-//     string? errorMessage;
-// |};
+public enum TransactionStatus {
+    SUCCESS,
+    FAILURE,
+    UNKNOWN
+};
 
-// public enum TransactionStatus {
-//     SUCCESS,
-//     FAILURE
-// };
+public type TransactionLog record {|
+    string clientId;
+    TransactionStatus status;
+    RequestLog requestLog;
+    ResponseLog responseLog?;
+    string errorMessage?;
+|};

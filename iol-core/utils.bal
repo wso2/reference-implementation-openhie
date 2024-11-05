@@ -6,7 +6,7 @@ import ballerinax/health.hl7v2;
 const string X_JWT_HEADER = "Authorization";
 const string[] JWT_KEYS = ["username", "email", "roles", "id"];
 
-public isolated function getPayload(http:Request req) returns json|xml|string|error {
+public isolated function getPayload(http:Request req) returns json|xml|string? {
     json|error jsonPayload = req.getJsonPayload();
     if jsonPayload is json {
         return jsonPayload;
@@ -21,7 +21,7 @@ public isolated function getPayload(http:Request req) returns json|xml|string|er
     if textPayload is string {
         return textPayload;
     }
-    return error("Unsupported payload type");
+    return ();
 }
 
 public isolated function extractUserDetails(http:Request httpRequest) returns map<string>|error {
@@ -167,3 +167,26 @@ public isolated function extractPatientResource(json FhirMessage) returns json|e
     return error("Patient resource not found in the FHIR message");
 }
 
+public isolated function extractHeadersFromReq(http:Request req) returns map<string> {
+    map<string> headers = {};
+    string[] headerNames = req.getHeaderNames();
+    foreach string headerName in headerNames {
+        string|http:HeaderNotFoundError headerValue = req.getHeader(headerName);
+        if headerValue is string {
+            headers[headerName] = headerValue;
+        }
+    }
+    return headers;
+}
+
+public isolated function extractHeadersFromRes(http:Response res) returns map<string> {
+    map<string> headers = {};
+    string[] headerNames = res.getHeaderNames();
+    foreach string headerName in headerNames {
+        string|http:HeaderNotFoundError headerValue = res.getHeader(headerName);
+        if headerValue is string {
+            headers[headerName] = headerValue;
+        }
+    }
+    return headers;
+}

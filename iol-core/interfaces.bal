@@ -1,17 +1,11 @@
 import ballerina/http;
 
-public type HTTPMessageBuilder distinct object {
-    public isolated function process(http:Request req) returns http:Request|error;
+public type HTTPMessageTransformer distinct object {
+    public isolated function transform(http:Request req) returns http:Request|error;
+    public isolated function revertTransformation(http:Response res) returns http:Response|error;
 };
 
-public type TCPMessageBuilder distinct object {
-    public isolated function process(string data) returns TcpRequestContext|error;
-};
-
-public type HTTPMessageFormatter distinct object {
-    public isolated function format(http:Response res) returns http:Response|error;
-};
-
-public type TCPMessageFormatter distinct object {
-    public isolated function format(TcpResponseContext|error resCtx, TcpRequestContext reqCtx) returns byte[]|error;
+public type TCPMessageTransformer distinct object {
+    public isolated function transform(string data) returns json|error;
+    public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns string|error;
 };
