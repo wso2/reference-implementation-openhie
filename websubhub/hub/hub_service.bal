@@ -19,6 +19,7 @@ import in_memory_hub.store;
 
 import ballerina/websubhub;
 
+const string OPENSEARCH_TOPIC_PREFIX = "opensearch";
 # An in-memory WebSub Hub implementation.
 public websubhub:Service hubService = service object {
 
@@ -56,6 +57,14 @@ public websubhub:Service hubService = service object {
     # if publish content failed
     remote function onUpdateMessage(readonly & websubhub:UpdateMessage message) returns websubhub:Acknowledgement|websubhub:UpdateMessageError {
         if !store:isTopicAvailable(message.hubTopic) {
+            return websubhub:UPDATE_MESSAGE_ERROR;
+        }
+        do {
+            if message.hubTopic.startsWith(OPENSEARCH_TOPIC_PREFIX) {
+                check sendEvent(message);
+                return websubhub:ACKNOWLEDGEMENT;
+            }
+        } on fail {
             return websubhub:UPDATE_MESSAGE_ERROR;
         }
         mq:enqueue(message);

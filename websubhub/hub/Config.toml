@@ -1,2 +1,7 @@
 # The port that is used to start the hub
 HUB_PORT = 9090
+
+[openSearchConfig]
+url = "https://localhost:9200"
+username = "admin"
+password = "534535345345!Mp"
