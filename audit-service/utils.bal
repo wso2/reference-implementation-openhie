@@ -1,44 +1,52 @@
 // import ballerina/cache;
-// import ballerina/io;
+import ballerina/io;
 import ballerina/log;
 // import ballerina/task;
 import ballerina/uuid;
 import ballerinax/health.fhir.r4;
 import ballerinax/health.fhir.r4.international401;
 import ballerinax/health.fhir.r4.terminology;
-import ballerinax/mongodb;
+
+// import ballerinax/mongodb;
 
 // name of the fhir server. This is used as the source observer name in the FHIR audit event
 configurable string fhirServerName = "wso2fhirserver.com";
 // agent type of the audit event. This is used as the agent type in the FHIR audit event
 configurable string agentType = "humanuser";
 
-configurable DBConfig dBConfig = ?;
-final mongodb:Client mongoClient;
+// configurable DBConfig dBConfig = ?;
+// final mongodb:Client mongoClient;
 
 function init() returns error? {
-    mongoClient = check new ({
-        connection: {
-            serverAddress: {
-                host: dBConfig.host,
-                port: dBConfig.port
-            }
-            // auth: <mongodb:ScramSha256AuthCredential>{
-            //     username: dBConfig.username,
-            //     password: dBConfig.password,
-            //     database: dBConfig.dbname
-            // }
-        }
-    });
-    log:printInfo("MongoDB client Created Successfully");
+    // mongoClient = check new ({
+    //     connection: {
+    //         serverAddress: {
+    //             host: dBConfig.host,
+    //             port: dBConfig.port
+    //         }
+    //         // auth: <mongodb:ScramSha256AuthCredential>{
+    //         //     username: dBConfig.username,
+    //         //     password: dBConfig.password,
+    //         //     database: dBConfig.dbname
+    //         // }
+    //     }
+    // });
+    // log:printInfo("MongoDB client Created Successfully");
 }
 
-isolated function save(InternalAuditEvent audit) returns error? {
+isolated function save(InternalAuditEvent audit) returns json|error {
     international401:AuditEvent auditEvent = toFhirAuditEvent(audit);
-    mongodb:Database db = check mongoClient->getDatabase(dBConfig.dbname);
-    mongodb:Collection auditCollection = check db->getCollection("audit");
-    check auditCollection->insertOne(auditEvent);
-    log:printInfo("Audit message saved successfully");
+    // mongodb:Database db = check mongoClient->getDatabase(dBConfig.dbname);
+    // mongodb:Collection auditCollection = check db->getCollection("audit");
+    // check auditCollection->insertOne(auditEvent);
+    // Define the file path to save the audit event
+    string:RegExp r1 = re `-`;
+    string:RegExp r2 = re `:`;
+    json auditEventJson = auditEvent.toJson();
+    string filePath = string `./logs/audit_${r2.replaceAll(r1.replaceAll(audit.recordedTime, "_"), "_")}.json`;
+    check io:fileWriteString(filePath, auditEventJson.toJsonString());
+    log:printInfo("Audit message written to file successfully");
+    return auditEventJson;
 };
 
 isolated function toFhirAuditEvent(InternalAuditEvent internalAuditEvent) returns international401:AuditEvent => {

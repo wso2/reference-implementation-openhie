@@ -61,7 +61,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "http"
-version = "2.11.4"
+version = "2.11.5"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -332,6 +332,27 @@ modules = [
 ]
 
 [[package]]
+org = "ballerina"
+name = "websubhub"
+version = "1.11.0"
+dependencies = [
+	{org = "ballerina", name = "crypto"},
+	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "io"},
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "jwt"},
+	{org = "ballerina", name = "lang.runtime"},
+	{org = "ballerina", name = "lang.string"},
+	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "mime"},
+	{org = "ballerina", name = "url"},
+	{org = "ballerina", name = "uuid"}
+]
+modules = [
+	{org = "ballerina", packageName = "websubhub", moduleName = "websubhub"}
+]
+
+[[package]]
 org = "ballerinai"
 name = "observe"
 version = "0.0.0"
@@ -436,19 +457,6 @@ dependencies = [
 ]
 
 [[package]]
-org = "ballerinax"
-name = "mongodb"
-version = "5.0.0"
-dependencies = [
-	{org = "ballerina", name = "crypto"},
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "log"}
-]
-modules = [
-	{org = "ballerinax", packageName = "mongodb", moduleName = "mongodb"}
-]
-
-[[package]]
 org = "wso2"
 name = "FhirAuditService"
 version = "1.0.0"
@@ -459,11 +467,11 @@ dependencies = [
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "uuid"},
 	{org = "ballerina", name = "websub"},
+	{org = "ballerina", name = "websubhub"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "health.fhir.r4"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"},
-	{org = "ballerinax", name = "health.fhir.r4.terminology"},
-	{org = "ballerinax", name = "mongodb"}
+	{org = "ballerinax", name = "health.fhir.r4.terminology"}
 ]
 modules = [
 	{org = "wso2", packageName = "FhirAuditService", moduleName = "FhirAuditService"}
