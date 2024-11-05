@@ -5,7 +5,7 @@ import ballerina/tcp;
 public function main() returns error? {
     // Define the server address and port
     string serverAddress = "localhost";
-    int serverPort = 9081;
+    int serverPort = 9086;
 
     // Create a TCP client
     tcp:Client tcpClient = check new (serverAddress, serverPort);
@@ -20,13 +20,13 @@ PV1|1|I|W^389^1^UCLA|3|||1111^Jones^John^A^^Dr.||2222^Smith^Jane^B^^Dr.||SUR||||
     // Define the ADT^A06 message (Patient Update)
     string message_a06 = string `MSH|^~\\&|SendingApp|SendingFac|ReceivingApp|ReceivingFac|20241013130000||ADT^A06|54321|P|2.3
 EVN|A08|20241013130000
-PID|1||3^^^Hospital^MR||Doe^John^A||1980-01-01|M|||789 Updated St^^Newtown^CA^54321|555-777-8888|||M
+PID|1||5^^^Hospital^MR||Doe^John^A||1980-01-01|M|||789 Updated St^^Newtown^CA^54321|555-777-8888|||M
 NK1|1|Doe^Jane|SPO|789 Secondary St^^Newtown^CA^54321|555-999-0000
 PV1|1|I|W^389^1^UCLA|3|||1111^Jones^John^A^^Dr.||2222^Smith^Jane^B^^Dr.||SUR||||ADM|A0|`;
 
     // Define the QBP^Q23 message (Patient Query)
     string message_q23 = string `MSH|^~\\&|SendingApp|SendingFac|ReceivingApp|ReceivingFac|20241013140000||QBP^Q21|67890|P|2.4
-QPD|IHE PIX Query|Q123456|3^^^Hospital^MR|Doe^John^A|1980-01-01|M
+QPD|IHE PIX Query|Q123456|5^^^Hospital^MR|Doe^John^A|1980-01-01|M
 RCP|I`;
 
     // Send the ADT^A01 (Patient Create) message to the server
@@ -34,12 +34,12 @@ RCP|I`;
     check sendMessageAndReceiveResponse(tcpClient, message_a01);
 
     // Send the ADT^A08 (Patient Update) message to the server
-    log:printInfo("Sending ADT^A06 (Patient Update)...");
-    check sendMessageAndReceiveResponse(tcpClient, message_a06);
+    // log:printInfo("Sending ADT^A06 (Patient Update)...");
+    // check sendMessageAndReceiveResponse(tcpClient, message_a06);
 
     // // Send the QBP^Q23 (Patient Query) message to the server
-    log:printInfo("Sending QBP^Q23 (Patient Query)...");
-    check sendMessageAndReceiveResponse(tcpClient, message_q23);
+    // log:printInfo("Sending QBP^Q23 (Patient Query)...");
+    // check sendMessageAndReceiveResponse(tcpClient, message_q23);
 
     // Close the TCP client connection
     check tcpClient->close();
