@@ -1,6 +1,11 @@
 ---
 version: '3'
 services:
+  fhir:
+    container_name: hapi-fhir
+    image: hapiproject/hapi:latest
+    ports:
+      - "8081:8080"
   opensearch-node1:
     image: opensearchproject/opensearch:latest
     container_name: opensearch-node1
@@ -11,7 +16,7 @@ services:
       - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
       - bootstrap.memory_lock=true  # along with the memlock settings below, disables swapping
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m  # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=openhiedemo!123    # Sets the demo admin user password when using demo configuration, required for OpenSearch 2.12 and higher
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=openHIEdemo!123    # Sets the demo admin user password when using demo configuration, required for OpenSearch 2.12 and higher
     ulimits:
       memlock:
         soft: -1
@@ -36,7 +41,7 @@ services:
       - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
       - bootstrap.memory_lock=true
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=openhiedemo!123
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=openHIEdemo!123
     ulimits:
       memlock:
         soft: -1
@@ -57,6 +62,23 @@ services:
       - '5601'
     environment:
       OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]'
+        
+    networks:
+      - opensearch-net
+
+    depends_on:
+      - opensearch-node1
+      - opensearch-node2
+
+  import-script:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: import-script
+    depends_on:
+      - opensearch-dashboards
+    volumes:
+      - ./saved_objects.ndjson:/usr/share/opensearch-dashboards/data/saved_objects.ndjson
+      - ./import_saved_objects.sh:/usr/local/bin/import_saved_objects.sh
+    command: ["/bin/bash", "-c", "/usr/local/bin/import_saved_objects.sh"]
     networks:
       - opensearch-net
 
