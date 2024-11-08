@@ -1,11 +1,11 @@
 import ballerina/http;
-import ballerina/io;
+// import ballerina/io;
 import ballerina/log;
 import ballerina/tcp;
 import ballerina/time;
 
 isolated function logTransaction(TransactionLog transactionLog) {
-    io:println("Transaction Log:", transactionLog);
+    log:printInfo(string `Transaction Log: ${transactionLog.toString()}`);
     do {
         check publish("opensearch transaction", <json>transactionLog);
     } on fail error e {
@@ -75,7 +75,7 @@ isolated function handleTcpError(error e, TransactionLog transactionLog, string 
     return errorMessage;
 }
 
-public isolated function handleTCP(string data, tcp:Caller caller) returns string {
+public isolated function handleTCP(string data, tcp:Caller caller) returns byte[] {
     RequestLog requestLog = {
         host: caller.remoteHost,
         port: caller.remotePort,
@@ -91,7 +91,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns strin
     };
 
     do {
-        check requestValidatorHL7(data);
+        // check requestValidatorHL7(data);
 
         string in_contentType = "hl7";
         TCPMessageTransformer messageTransformer = check getTCPMessageTransformer(in_contentType);
@@ -100,16 +100,24 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns strin
         TcpRequestContext reqCtx = check buildRequestContextForTCP(data, transformedData, in_contentType);
         transactionLog.clientId = reqCtx.username;
 
-        ResponseContext resCtx = check routeTCP(reqCtx);
+        ResponseContext|error resCtx = routeTCP(reqCtx);
+
+        if resCtx is error {
+            transactionLog.status = FAILURE;
+            transactionLog.errorMessage = resCtx.message();
+            logTransaction(transactionLog);
+            return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, string `Failed to process message ${resCtx.message()}`);
+        }
         http:Response res = resCtx.response;
         workflow workflow = resCtx.route.workflow;
 
         match res.statusCode {
             http:STATUS_CREATED => {
-                string ackMessage = createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource created successfully!");
+                byte[] ackMessage = check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource created successfully!");
+                string ackMessageStr = check string:fromBytes(ackMessage);
                 ResponseLog responseLog = {
                     status: "AA",
-                    payload: ackMessage,
+                    payload: ackMessageStr.trim(),
                     timestamp: time:utcToString(time:utcNow(3))
                 };
 
@@ -121,10 +129,11 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns strin
             }
             http:STATUS_OK => {
                 if (workflow == PATIENT_DEMOGRAPHICS_QUERY) {
-                    string payload = check messageTransformer.revertTransformation(check resCtx.response.getJsonPayload(), reqCtx);
+                    byte[] payload = check messageTransformer.revertTransformation(check resCtx.response.getJsonPayload(), reqCtx);
+                    string payloadStr = check string:fromBytes(payload);
                     ResponseLog responseLog = {
                         status: "AA",
-                        payload: payload,
+                        payload: payloadStr.trim(),
                         timestamp: time:utcToString(time:utcNow(3))
                     };
 
@@ -135,10 +144,11 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns strin
                     return payload;
                 }
 
-                string ackMessage = createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource updated successfully!");
+                byte[] ackMessage = check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource updated successfully!");
+                string ackMessageStr = check string:fromBytes(ackMessage);
                 ResponseLog responseLog = {
                     status: "AA",
-                    payload: ackMessage,
+                    payload: ackMessageStr.trim(),
                     timestamp: time:utcToString(time:utcNow(3))
                 };
 
@@ -153,10 +163,10 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns strin
                 transactionLog.errorMessage = "Failed to process message";
                 logTransaction(transactionLog);
 
-                return createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Failed to process message");
+                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Failed to process message");
             }
         }
     } on fail error e {
-        return handleTcpError(e, transactionLog, "Failed to process the message: " + e.message());
+        return handleTcpError(e, transactionLog, "Failed to process the message: " + e.message()).toBytes();
     }
 }

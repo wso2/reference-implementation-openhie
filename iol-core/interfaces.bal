@@ -7,5 +7,5 @@ public type HTTPMessageTransformer distinct object {
 
 public type TCPMessageTransformer distinct object {
     public isolated function transform(string data) returns json|error;
-    public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns string|error;
+    public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns byte[]|error;
 };

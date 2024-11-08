@@ -20,7 +20,7 @@ service /audit on new websub:Listener(PORT) {
     }
 
     isolated remote function onEventNotification(readonly & websub:ContentDistributionMessage msg) returns websub:Acknowledgement {
-        log:printInfo("Received content ");
+        log:printDebug(string `Received content : ${msg.content.toString()}`);
         do {
             json content = <json>msg.content;
             InternalAuditEvent auditEvent = check content.fromJsonWithType(InternalAuditEvent);

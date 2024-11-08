@@ -1,5 +1,7 @@
 import ballerinax/health.fhir.r4;
 import ballerinax/health.fhir.r4.international401;
+import ballerinax/health.hl7v2;
+import ballerinax/health.hl7v24;
 
 // Function to map a FHIR Patient resource to HL7v2
 public isolated function mapFhirPatientToHL7(
@@ -8,7 +10,7 @@ public isolated function mapFhirPatientToHL7(
         string sendingFacility,
         string receivingApp,
         string receivingFacility,
-        string messageControlId) returns string|error {
+        string messageControlId) returns byte[]|error {
 
     // Extract fields from FHIR Patient resource
     string patientId = fhirPatient.id.toString();
@@ -33,21 +35,47 @@ public isolated function mapFhirPatientToHL7(
 
     // Message date-time
     string messageDateTime = getCurrentTimestamp();
-
-    // For patient admit events
-    string messageType = "RSP^K21";
-
-    // Constants for HL7v2 segments
-    string processingId = "P";
-    string versionId = "2.3";
-
-    // MSH Segment
-    string mshSegment = string `MSH|^~\\&|${sendingApp}|${sendingFacility}|${receivingApp}|${receivingFacility}|${messageDateTime}||${messageType}|${messageControlId}|${processingId}|${versionId}`;
-
-    // PID Segment
-    string pidSegment = string `PID|1||${patientId}^^^Hospital^MR||${familyName}^${givenName}||${birthDate}|${gender}|||${addressLine}^^${city}^${state}^${postalCode}|${district}|||${gender}`; // TODO:check again format: Phone , Disctrict
-
-    // Combine segments to create the HL7v2 message
-    string hl7Message = mshSegment + "\n" + pidSegment;
-    return hl7Message;
+    // Constructing the RSP_K21 message
+    hl7v24:RSP_K21 queryResult = {
+        msh: {
+            msh2: "^~\\&",
+            msh3: {hd1: sendingApp},
+            msh4: {hd1: sendingFacility},
+            msh5: {hd1: receivingApp},
+            msh6: {hd1: receivingFacility},
+            msh7: {ts1: messageDateTime},
+            msh9: {msg1: "RSP^K21"},
+            msh10: messageControlId,
+            msh11: {pt1: "P"},
+            msh12: {vid1: "2.5"}
+        },
+        msa: {
+            msa1: "AA",
+            msa2: messageControlId
+        },
+        qak: {
+            qak1: "12345",
+            qak2: "OK"
+        },
+        qpd: {
+            qpd1: {ce1: "IHE PDQ Query"},
+            qpd2: messageControlId
+        },
+        query_response: [
+            {
+                pid: {
+                    pid1: "1",
+                    pid3: [{cx1: patientId, cx4: {hd1: "Hospital", hd2: "MR"}}],
+                    pid5: [{xpn1: {fn1: familyName}, xpn2: givenName}],
+                    pid7: {ts1: birthDate},
+                    pid8: gender,
+                    pid11: [{xad1: {sad1: addressLine}, xad3: city, xad4: state, xad5: postalCode}],
+                    pid13: [{xtn1: phone}]
+                }
+            }
+        ]
+    };
+    // Encoding the HL7 message
+    byte[] encodedMsg = check hl7v2:encode(hl7v24:VERSION, queryResult);
+    return encodedMsg;
 }

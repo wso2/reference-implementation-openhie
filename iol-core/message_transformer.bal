@@ -1,5 +1,5 @@
 import ballerina/http;
-import ballerina/io;
+import ballerina/log;
 import ballerinax/health.fhir.r4.international401;
 import ballerinax/health.fhir.r4.parser;
 import ballerinax/health.hl7v2;
@@ -27,7 +27,7 @@ public class JsonMessageTransformer {
     *HTTPMessageTransformer;
 
     public isolated function init() {
-        io:println("Created an instance of JsonToFhirBuilder");
+        log:printInfo("Created an instance of JsonToFhirBuilder");
     }
 
     public isolated function transform(http:Request req) returns http:Request|error {
@@ -46,7 +46,7 @@ public class HL7MessageTransformer {
     *TCPMessageTransformer;
 
     public isolated function init() {
-        io:println("Created an instance of JsonToFhirBuilder");
+        log:printInfo("Created an instance of JsonToFhirBuilder");
     }
 
     public isolated function transform(string data) returns json|error {
@@ -55,9 +55,9 @@ public class HL7MessageTransformer {
         return v2tofhirResult;
     }
 
-    public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns string|error {
+    public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns byte[]|error {
         international401:Patient fhirPatient = check parser:parse(check extractPatientResource(data)).ensureType();
-        string hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
+        byte[] hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
         return hl7msg;
     }
 }

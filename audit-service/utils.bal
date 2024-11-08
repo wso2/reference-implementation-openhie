@@ -18,28 +18,10 @@ configurable string agentType = "humanuser";
 // final mongodb:Client mongoClient;
 
 function init() returns error? {
-    // mongoClient = check new ({
-    //     connection: {
-    //         serverAddress: {
-    //             host: dBConfig.host,
-    //             port: dBConfig.port
-    //         }
-    //         // auth: <mongodb:ScramSha256AuthCredential>{
-    //         //     username: dBConfig.username,
-    //         //     password: dBConfig.password,
-    //         //     database: dBConfig.dbname
-    //         // }
-    //     }
-    // });
-    // log:printInfo("MongoDB client Created Successfully");
 }
 
 isolated function save(InternalAuditEvent audit) returns json|error {
     international401:AuditEvent auditEvent = toFhirAuditEvent(audit);
-    // mongodb:Database db = check mongoClient->getDatabase(dBConfig.dbname);
-    // mongodb:Collection auditCollection = check db->getCollection("audit");
-    // check auditCollection->insertOne(auditEvent);
-    // Define the file path to save the audit event
     string:RegExp r1 = re `-`;
     string:RegExp r2 = re `:`;
     json auditEventJson = auditEvent.toJson();

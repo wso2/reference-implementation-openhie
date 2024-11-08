@@ -13,8 +13,9 @@ service class TcpService {
 
     remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error|error? {
         string fromBytes = check string:fromBytes(data);
-        string response = handleTCP(fromBytes, caller);
-        check caller->writeBytes(response.toBytes());
+        string sanitized = sanitizeHL7Message(fromBytes);
+        byte[] response = handleTCP(sanitized, caller);
+        check caller->writeBytes(response);
     }
 
     remote function onClose() {
