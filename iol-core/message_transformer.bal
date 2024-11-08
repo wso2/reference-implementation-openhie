@@ -56,7 +56,7 @@ public class HL7MessageTransformer {
     }
 
     public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns byte[]|error {
-        international401:Patient fhirPatient = check parser:parse(check extractPatientResource(data)).ensureType();
+        international401:Patient fhirPatient = check parser:parse(data).ensureType();
         byte[] hl7msg = check mapFhirPatientToHL7(fhirPatient, reqCtx.receivingApplication, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.sendingFacility, reqCtx.msgId);
         return hl7msg;
     }

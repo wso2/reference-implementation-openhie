@@ -18,7 +18,7 @@ service / on pdListener {
         }
 
         // Build FHIR query and fetch patient details
-        string fhirQuery = buildFHIRQuery(patientId, familyName, givenName, birthDate);
+        string fhirQuery = string `/Patient/${patientId}`; // buildFHIRQuery(patientId, familyName, givenName, birthDate);
         http:Response|error result = getPatientDetailsFromFHIR(fhirQuery);
 
         if result is error {

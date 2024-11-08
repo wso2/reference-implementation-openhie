@@ -11,10 +11,8 @@ public isolated function mapFhirPatientToHL7(
         string receivingApp,
         string receivingFacility,
         string messageControlId) returns byte[]|error {
-
     // Extract fields from FHIR Patient resource
     string patientId = fhirPatient.id.toString();
-
     r4:HumanName[] name = check fhirPatient.name.ensureType();
     string familyName = check name[0].family.ensureType();
     string givenName = string:'join(" ", ...check name[0].given.ensureType());
@@ -47,7 +45,7 @@ public isolated function mapFhirPatientToHL7(
             msh9: {msg1: "RSP^K21"},
             msh10: messageControlId,
             msh11: {pt1: "P"},
-            msh12: {vid1: "2.5"}
+            msh12: {vid1: "2.4"}
         },
         msa: {
             msa1: "AA",
