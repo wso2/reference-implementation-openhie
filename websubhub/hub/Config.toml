@@ -1,7 +1,7 @@
 # The port that is used to start the hub
-HUB_PORT = 9090
+HUB_PORT = 9095
 
 [openSearchConfig]
 url = "https://localhost:9200"
 username = "admin"
-password = "534535345345!Mp"
+password = "openHIEdemo!123"

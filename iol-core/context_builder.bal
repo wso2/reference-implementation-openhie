@@ -5,7 +5,7 @@ public isolated function buildRequestContextForHTTP(http:Request originalReq, ht
     // var userDetails = check extractUserDetails(req);
     HTTPRequstContext reqCtx = {
         username: "test_username",
-        patientId: "test_patientId",
+        patientId: originalReq.getQueryParamValue("patientId") ?: "",
         contentType: originalReq.getContentType(),
         httpRequest: transformedReq
     };

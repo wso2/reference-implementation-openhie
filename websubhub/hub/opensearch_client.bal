@@ -31,14 +31,13 @@ isolated function sendEvent(websubhub:UpdateMessage message) returns error? {
 
     http:Request req = new;
     req.setPayload(message.content.toJson(), contentType = "application/json");
-
     http:Response|http:ClientError response = openSearchClient->post(string `/${indexTopicMap.get(subtopic)}/_doc`, req);
     if response is http:ClientError {
         log:printError("failed to send ", message = response.message());
         return response;
     }
     if response.statusCode != http:STATUS_CREATED {
-        log:printError("Failed to send log to Fluent Bit");
+        log:printError(string `Failed to send event ${subtopic}`);
     }
     log:printInfo("Log sent to Fluent Bit", message = check response.getTextPayload());
 }

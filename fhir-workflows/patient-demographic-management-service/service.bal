@@ -6,6 +6,7 @@ listener http:Listener pdListener = new (PORT);
 service / on pdListener {
     isolated resource function get .(http:Caller caller, http:Request req) returns error? {
         // Extract query parameters with default values
+
         string patientId = req.getQueryParamValue("patientId") ?: "";
         string familyName = req.getQueryParamValue("familyName") ?: "";
         string givenName = req.getQueryParamValue("givenName") ?: "";

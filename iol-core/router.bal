@@ -139,8 +139,11 @@ isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqC
 
 isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns http:Request|error {
     http:Request customReq = req;
-    customReq.rawPath = "/"; //TODO: change this to the actual path
+    customReq.rawPath = string `/?patientId=${req.getQueryParamValue("patientId") ?: ""}`; //TODO: change this to the actual path
     check customReq.setContentType(route.contentType ?: "application/json");
+
+    // add query parameters
+
     return customReq;
 }
 
