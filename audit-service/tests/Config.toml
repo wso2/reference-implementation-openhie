@@ -1,0 +1,9 @@
+PORT=9094
+
+# support only for mongodb
+[dBConfig]
+host = "localhost"
+port = 27017
+dbname = "openhie_iol_ref_impl"
+username = ""
+password = ""
