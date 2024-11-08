@@ -2,9 +2,22 @@ import ballerina/http;
 import ballerina/jwt;
 import ballerina/time;
 import ballerinax/health.hl7v2;
+import ballerinax/health.hl7v23;
 
 const string X_JWT_HEADER = "Authorization";
 const string[] JWT_KEYS = ["username", "email", "roles", "id"];
+
+isolated function sanitizeHL7Message(string message) returns string {
+    // Trim leading and trailing whitespace or newline characters
+    string sanitizedMessage = message.trim();
+
+    // Remove or replace any non-HL7 standard characters, such as "∟"
+    // You can use a regular expression to remove unwanted characters
+    // string:RegExp invalidCharsPattern = re `\\\\`;
+    // string result = invalidCharsPattern.replaceAll(sanitizedMessage, "\\");
+
+    return sanitizedMessage;
+}
 
 public isolated function getPayload(http:Request req) returns json|xml|string? {
     json|error jsonPayload = req.getJsonPayload();
@@ -113,19 +126,32 @@ public function splitString(string str, string delimiter) returns string[] {
     return re `${delimiter}`.split(str);
 }
 
-isolated function createHL7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns string {
-    string hl7Version = "2.4";
+isolated function createHL7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns byte[]|error {
+    string hl7Version = "2.3";
     string timestamp = getCurrentTimestamp();
 
-    // Construct MSH (Message Header) segment
-    string mshSegment = string `MSH|^~\\&|${sendingApp}|${sendingFacility}|${receivingApp}|${receivingFacility}|${timestamp}||${messageType}|${messageID}|P|${hl7Version}|`;
+    hl7v23:ACK ack = {
+        msh: {
+            msh2: "^~\\&",
+            msh3: {hd1: sendingApp},
+            msh4: {hd1: sendingFacility},
+            msh5: {hd1: receivingApp},
+            msh6: {hd1: receivingFacility},
+            msh7: {ts1: timestamp},
+            msh9: {cm_msg1: hl7v23:ACK_MESSAGE_TYPE},
+            msh10: messageID,
+            msh11: {pt1: "P"},
+            msh12: hl7Version
+        },
+        msa: {
+            msa1: statusCode,
+            msa2: messageID,
+            msa3: details
+        }
+    };
 
-    // Construct MSA (Message Acknowledgment) segment
-    string msaSegment = string `MSA|${statusCode}|${messageID}|${details}`;
-
-    // Combine the MSH and MSA segments to create the full HL7 ACK message
-    string ackMessage = string `${mshSegment}\n${msaSegment}`;
-    return ackMessage;
+    byte[] encodedAck = check hl7v2:encode(hl7v23:VERSION, ack);
+    return encodedAck;
 }
 
 // Utility function to get current timestamp in HL7v2 format (YYYYMMDDHHMMSS)
