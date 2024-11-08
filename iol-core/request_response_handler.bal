@@ -1,5 +1,4 @@
 import ballerina/http;
-// import ballerina/io;
 import ballerina/log;
 import ballerina/tcp;
 import ballerina/time;
@@ -158,6 +157,30 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
 
                 return ackMessage;
             }
+            http:STATUS_BAD_REQUEST => {
+                transactionLog.status = FAILURE;
+                transactionLog.errorMessage = "Bad Request";
+                logTransaction(transactionLog);
+
+                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Bad Request");
+            }
+
+            http:STATUS_NOT_FOUND => {
+                transactionLog.status = FAILURE;
+                transactionLog.errorMessage = "Resource not found";
+                logTransaction(transactionLog);
+
+                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Resource not found");
+            }
+
+            http:STATUS_INTERNAL_SERVER_ERROR => {
+                transactionLog.status = FAILURE;
+                transactionLog.errorMessage = "Internal Server Error";
+                logTransaction(transactionLog);
+
+                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Internal Server Error");
+            }
+
             _ => {
                 transactionLog.status = FAILURE;
                 transactionLog.errorMessage = "Failed to process message";

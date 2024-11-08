@@ -19,7 +19,7 @@ service / on pdListener {
 
         // Build FHIR query and fetch patient details
         string fhirQuery = buildFHIRQuery(patientId, familyName, givenName, birthDate);
-        var result = getPatientDetailsFromFHIR(fhirQuery);
+        http:Response|error result = getPatientDetailsFromFHIR(fhirQuery);
 
         if result is error {
             return respondWithInternalError(caller, "FHIR server query failed");
