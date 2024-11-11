@@ -4,8 +4,8 @@ import ballerina/time;
 import ballerinax/health.hl7v2;
 import ballerinax/health.hl7v23;
 
-const string X_JWT_HEADER = "Authorization";
-const string[] JWT_KEYS = ["username", "email", "roles", "id"];
+const X_JWT_HEADER = "x-jwt-assertion";
+const IDP_CLAIMS = "idp_claims";
 
 isolated function sanitizeHL7Message(string message) returns string {
     // Trim leading and trailing whitespace or newline characters
@@ -40,20 +40,22 @@ public isolated function getPayload(http:Request req) returns json|xml|string? {
 public isolated function extractUserDetails(http:Request httpRequest) returns map<string>|error {
     string|error authHeader = httpRequest.getHeader(X_JWT_HEADER);
     if authHeader is string {
-        string jwtToken = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-        [jwt:Header, jwt:Payload]|error headerPayload = jwt:decode(jwtToken);
+        [jwt:Header, jwt:Payload]|error headerPayload = jwt:decode(authHeader);
         if headerPayload is [jwt:Header, jwt:Payload] {
             jwt:Payload payload = headerPayload[1];
-            map<string> userDetails = {};
-            foreach string key in JWT_KEYS {
-                if payload.hasKey(key) {
-                    userDetails[key] = <string>payload.get(key);
+            if payload.hasKey(IDP_CLAIMS) {
+                map<string> userDetails = {};
+                json idp_claims = <json>payload.get(IDP_CLAIMS);
+                json|error userName = idp_claims.username;
+                if userName is error {
+                    return error("Username is not available");
                 }
-            }
-            return userDetails;
-        } else {
-            return error("Failed to decode JWT");
+                userDetails["username"] = userName.toString();
+                return userDetails;
+            } 
+            return error("idp claims is not available");
         }
+        return error("Invalid JWT token");
     } else {
         return error("JWT token not found in the request header");
     }

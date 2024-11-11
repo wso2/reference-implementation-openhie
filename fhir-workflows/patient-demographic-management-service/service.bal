@@ -7,13 +7,13 @@ service / on pdListener {
     isolated resource function get .(http:Caller caller, http:Request req) returns error? {
         // Extract query parameters with default values
 
-        string patientId = req.getQueryParamValue("patientId") ?: "";
-        string familyName = req.getQueryParamValue("familyName") ?: "";
-        string givenName = req.getQueryParamValue("givenName") ?: "";
-        string birthDate = req.getQueryParamValue("birthDate") ?: "";
+        string patientId = req.getQueryParamValue("Patient") ?: "";
+        // string familyName = req.getQueryParamValue("familyName") ?: "";
+        // string givenName = req.getQueryParamValue("givenName") ?: "";
+        // string birthDate = req.getQueryParamValue("birthDate") ?: "";
 
         // Validate query parameters
-        if patientId == "" && familyName == "" && givenName == "" && birthDate == "" {
+        if patientId == "" {
             return respondWithBadRequest(caller, "No query parameters provided");
         }
 
@@ -43,15 +43,15 @@ service / on pdListener {
 
     isolated resource function put .(http:Caller caller, http:Request req) returns error? {
         // Extract and validate query parameters
-        string patientId = req.getQueryParamValue("patientId") ?: "";
+        string patientId = req.getQueryParamValue("Patient") ?: "";
         if patientId == "" {
             return respondWithBadRequest(caller, "Patient ID is required");
         }
-        string familyName = req.getQueryParamValue("familyName") ?: "";
-        string givenName = req.getQueryParamValue("givenName") ?: "";
-        string birthDate = req.getQueryParamValue("birthDate") ?: "";
+        // string familyName = req.getQueryParamValue("familyName") ?: "";
+        // string givenName = req.getQueryParamValue("givenName") ?: "";
+        // string birthDate = req.getQueryParamValue("birthDate") ?: "";
 
-        string fhirQuery = buildFHIRQuery(patientId, familyName, givenName, birthDate);
+        string fhirQuery = buildFHIRQuery(patientId);
         var payload = req.getJsonPayload();
         if payload is error {
             return respondWithBadRequest(caller, "Invalid JSON payload");

@@ -2,14 +2,13 @@ import ballerina/http;
 
 public isolated function buildRequestContextForHTTP(http:Request originalReq, http:Request transformedReq) returns HTTPRequstContext|error {
     // TODO:extract user details
-    // var userDetails = check extractUserDetails(req);
+    map<string> userDetails = check extractUserDetails(originalReq);
     HTTPRequstContext reqCtx = {
-        username: "test_username",
-        patientId: originalReq.getQueryParamValue("patientId") ?: "",
+        username: userDetails["username"]?:"",
+        patientId: originalReq.getQueryParamValue("Patient") ?: "",
         contentType: originalReq.getContentType(),
         httpRequest: transformedReq
     };
-
     return reqCtx;
 }
 
@@ -17,7 +16,7 @@ public isolated function buildRequestContextForTCP(string data, json transformed
     // TODO: extract user details
     TcpRequestContext reqCtx = {
         contentType: in_contentType,
-        username: "test-username",
+        username: extractSendingApplication(data),
         fhirMessage: transformedData,
         msgId: extractHL7MessageId(data),
         eventCode: extractHL7MessageType(data),

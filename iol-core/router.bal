@@ -58,8 +58,15 @@ public isolated function routeHttp(HTTPRequstContext reqCtx) returns ResponseCon
         http:Client _client = check getHTTPClient(targetRoute);
         http:Request _req = check createHTTPRequestforHTTP(reqCtx.httpRequest, targetRoute);
         check audit_request(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
-        http:Response|error response = _client->forward(_req.rawPath, _req);
-
+        http:Response|error response;
+        match _req.method {
+            http:GET => {
+                response = _client->get(_req.rawPath);
+            }
+            _ => {
+                response = _client->forward(_req.rawPath, _req);
+            }
+        }
         if response is error {
             return error(string `Failed to forward the request to the Upstream Service: ${response.message()}`);
         }
@@ -76,7 +83,7 @@ public isolated function routeTCP(TcpRequestContext reqCtx) returns ResponseCont
         TcpRoute targetRoute = check findRouteForTcpRequest(reqCtx);
         http:Client _client = check getHTTPClient(targetRoute);
         http:Request _req = check createHTTPRequestforTCP(targetRoute, reqCtx);
-        check audit_request(targetRoute.workflow, "test-username", reqCtx.patientId, systemInfo.SYSNAME);
+        check audit_request(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
 
         http:Response|error response;
         match targetRoute.method {
@@ -127,7 +134,7 @@ isolated function findRouteForTcpRequest(TcpRequestContext reqCtx) returns TcpRo
 
 isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqCtx) returns http:Request|error {
     http:Request req = new;
-    req.rawPath = check setRequestParams(route.method, reqCtx);
+    req.rawPath = check setRequestParams(route, reqCtx);
     if route.method == "GET" {
         return req;
     }
@@ -138,20 +145,25 @@ isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqC
 }
 
 isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns http:Request|error {
-    http:Request customReq = req;
-    customReq.rawPath = string `/?patientId=${req.getQueryParamValue("patientId") ?: ""}`; //TODO: change this to the actual path
-    check customReq.setContentType(route.contentType ?: "application/json");
+    // http:Request customReq = req;
+    // customReq.rawPath = string `/?Patient=${req.getQueryParamValue("Patient") ?: ""}`; //TODO: change this to the actual path
 
+    http:Request CustomReq = new;
+    CustomReq.rawPath = req.rawPath;
+    CustomReq.method = req.method;
+    if req.method == "GET" {
+        return req;
+    }
+    CustomReq.setPayload(check req.getJsonPayload(), "application/json");
     // add query parameters
-
-    return customReq;
+    return CustomReq;
 }
 
-isolated function setRequestParams(string method, TcpRequestContext reqCtx) returns string|error {
+isolated function setRequestParams(TcpRoute route, TcpRequestContext reqCtx) returns string|error {
     // TODO: add more parameters
-    if reqCtx.patientId != "" {
+    if (route.workflow == PATIENT_DEMOGRAPHICS_QUERY || route.workflow == PATIENT_DEMOGRAPHICS_UPDATE) && reqCtx.patientId != "" {
         string path = "/?";
-        path = path + "patientId=" + reqCtx.patientId;
+        path = path + "Patient=" + reqCtx.patientId;
         return path;
     }
     return "";
