@@ -139,7 +139,7 @@ isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqC
         return req;
     }
     req.method = route.method;
-    json payload = check extractPatientResource(reqCtx.fhirMessage);
+    json payload = check extractPatientResource(reqCtx.fhirMessage, reqCtx.patientId);
     req.setPayload(payload, "application/json");
     return req;
 }
@@ -166,8 +166,8 @@ isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) re
 isolated function setRequestParams(TcpRoute route, TcpRequestContext reqCtx) returns string|error {
     // TODO: add more parameters
     if (route.workflow == PATIENT_DEMOGRAPHICS_QUERY || route.workflow == PATIENT_DEMOGRAPHICS_UPDATE) && reqCtx.patientId != "" {
-        string path = "/?";
-        path = path + "Patient=" + reqCtx.patientId;
+        string path = "/Patient/";
+        path = path + reqCtx.patientId;
         return path;
     }
     return "";

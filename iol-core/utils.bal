@@ -52,7 +52,7 @@ public isolated function extractUserDetails(http:Request httpRequest) returns ma
                 }
                 userDetails["username"] = userName.toString();
                 return userDetails;
-            } 
+            }
             return error("idp claims is not available");
         }
         return error("Invalid JWT token");
@@ -180,7 +180,7 @@ isolated function formatTimestamp(time:Utc timestamp) returns string {
     return year + month + day + hour + minute + second;
 }
 
-public isolated function extractPatientResource(json FhirMessage) returns json|error {
+public isolated function extractPatientResource(json FhirMessage, string patientId) returns json|error {
     map<json> fhirMessage = check FhirMessage.ensureType();
     json[] entries = check fhirMessage["entry"].ensureType();
 
@@ -188,7 +188,7 @@ public isolated function extractPatientResource(json FhirMessage) returns json|e
         map<json> 'resource = check entry.ensureType();
         map<json> Resource = check 'resource["resource"].ensureType();
         if (Resource["resourceType"] == "Patient") {
-
+            Resource["id"] = patientId;
             return Resource;
         }
     }
