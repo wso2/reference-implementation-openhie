@@ -152,7 +152,7 @@ isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) re
     regexp:Groups? subPath = pathRegex.findGroups(req.rawPath);
     CustomReq.rawPath = "/";
     if subPath is regexp:Groups && subPath.length() > 1 {
-        CustomReq.rawPath = CustomReq.rawPath + (<regexp:Span>subPath[1]).substring();
+        CustomReq.rawPath = CustomReq.rawPath + (<regexp:Span>subPath[0]).substring();
     }
     CustomReq.method = req.method;
     if req.method == "GET" {

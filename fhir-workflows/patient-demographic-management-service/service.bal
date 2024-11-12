@@ -5,16 +5,12 @@ listener http:Listener pdListener = new (PORT);
 
 service / on pdListener {
     isolated resource function get [string... path](http:Caller caller, http:Request req) returns error? {
-
         // path is like Patient/{patientId}
-
-        string patientId = path[1];
-        // Validate query parameters
-        if patientId == "" {
+        if path.length() == 0 {
             return respondWithBadRequest(caller, "No patient id provided");
         }
         // Build FHIR query and fetch patient details
-        string fhirQuery = string `/Patient/${patientId}`;
+        string fhirQuery = req.rawPath;
         http:Response|error result = getPatientDetailsFromFHIR(fhirQuery);
 
         if result is error {
@@ -38,16 +34,12 @@ service / on pdListener {
     }
 
     isolated resource function put [string... path](http:Caller caller, http:Request req) returns error? {
-        // Extract and validate query parameters
         // path is like Patient/{patientId}
-
-        string patientId = path[0];
-        // Validate query parameters
-        if patientId == "" {
+        if path.length() == 0 {
             return respondWithBadRequest(caller, "No patient id provided");
         }
-
-        string fhirQuery = buildFHIRQuery(patientId);
+        // Build FHIR query and fetch patient details
+        string fhirQuery = req.rawPath;
         var payload = req.getJsonPayload();
         if payload is error {
             return respondWithBadRequest(caller, "Invalid JSON payload");

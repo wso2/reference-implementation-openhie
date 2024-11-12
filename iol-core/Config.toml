@@ -11,7 +11,7 @@ TCP_LISTENER_PORT = 9094
 [[httpRoutes]]
 contentType = "application/json"
 methods = ["GET"]
-path = "^/Patient/(.*)"
+path = "^/Patient(.*)"
 target = "http://localhost:9092"
 workflow = "PATIENT_DEMOGRAPHICS_QUERY"
 # auth = {tokenUrl = "http://localhost:9092/token", clientId = "client_id", clientSecret = "client_secret", scopes = ["scope1", "scope2"]}
@@ -29,7 +29,7 @@ workflow = "PATIENT_DEMOGRAPHICS_CREATE"
 [[httpRoutes]]
 contentType = "application/json"
 methods = ["PUT"]
-path = "^/Patient/(.*)"
+path = "^/Patient(.*)"
 target = "http://localhost:9092"
 workflow = "PATIENT_DEMOGRAPHICS_UPDATE"
 
