@@ -4,21 +4,17 @@ configurable int PORT = ?;
 listener http:Listener pdListener = new (PORT);
 
 service / on pdListener {
-    isolated resource function get .(http:Caller caller, http:Request req) returns error? {
-        // Extract query parameters with default values
+    isolated resource function get [string... path](http:Caller caller, http:Request req) returns error? {
 
-        string patientId = req.getQueryParamValue("Patient") ?: "";
-        // string familyName = req.getQueryParamValue("familyName") ?: "";
-        // string givenName = req.getQueryParamValue("givenName") ?: "";
-        // string birthDate = req.getQueryParamValue("birthDate") ?: "";
+        // path is like Patient/{patientId}
 
+        string patientId = path[1];
         // Validate query parameters
         if patientId == "" {
-            return respondWithBadRequest(caller, "No query parameters provided");
+            return respondWithBadRequest(caller, "No patient id provided");
         }
-
         // Build FHIR query and fetch patient details
-        string fhirQuery = string `/Patient/${patientId}`; // buildFHIRQuery(patientId, familyName, givenName, birthDate);
+        string fhirQuery = string `/Patient/${patientId}`;
         http:Response|error result = getPatientDetailsFromFHIR(fhirQuery);
 
         if result is error {
@@ -41,15 +37,15 @@ service / on pdListener {
         check caller->respond(result);
     }
 
-    isolated resource function put .(http:Caller caller, http:Request req) returns error? {
+    isolated resource function put [string... path](http:Caller caller, http:Request req) returns error? {
         // Extract and validate query parameters
-        string patientId = req.getQueryParamValue("Patient") ?: "";
+        // path is like Patient/{patientId}
+
+        string patientId = path[0];
+        // Validate query parameters
         if patientId == "" {
-            return respondWithBadRequest(caller, "Patient ID is required");
+            return respondWithBadRequest(caller, "No patient id provided");
         }
-        // string familyName = req.getQueryParamValue("familyName") ?: "";
-        // string givenName = req.getQueryParamValue("givenName") ?: "";
-        // string birthDate = req.getQueryParamValue("birthDate") ?: "";
 
         string fhirQuery = buildFHIRQuery(patientId);
         var payload = req.getJsonPayload();

@@ -147,9 +147,13 @@ isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqC
 isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns http:Request|error {
     // http:Request customReq = req;
     // customReq.rawPath = string `/?Patient=${req.getQueryParamValue("Patient") ?: ""}`; //TODO: change this to the actual path
-
     http:Request CustomReq = new;
-    CustomReq.rawPath = req.rawPath;
+    regexp:RegExp pathRegex = check regexp:fromString(route.path);
+    regexp:Groups? subPath = pathRegex.findGroups(req.rawPath);
+    CustomReq.rawPath = "/";
+    if subPath is regexp:Groups && subPath.length() > 1 {
+        CustomReq.rawPath = CustomReq.rawPath + (<regexp:Span>subPath[1]).substring();
+    }
     CustomReq.method = req.method;
     if req.method == "GET" {
         return req;
