@@ -1,5 +1,10 @@
 [externalServices]
-WEBSUB_HUB_URL = "http://localhost:9095/hub"
+
+[webSubHubSettings]
+URL = "http://localhost:9095/hub"
+TOPICS_TO_REGISTER = ["audit","opensearch transaction","opensearch audit"]
+RETRY_INTERVAL = 10.0 # in seconds
+MAX_RETRIES = 3
 
 [systemInfo]
 SYSNAME = "IOL-Ref-Implementaion v0.1"
