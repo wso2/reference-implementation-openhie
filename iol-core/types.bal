@@ -1,7 +1,13 @@
 import ballerina/http;
 
 public type ExternalServices record {|
-    string WEBSUB_HUB_URL;
+|};
+
+public type WebSubHubSettings record {|
+    string URL;
+    string[] TOPICS_TO_REGISTER;
+    decimal RETRY_INTERVAL;
+    int MAX_RETRIES;
 |};
 
 public type SystemInfo record {|

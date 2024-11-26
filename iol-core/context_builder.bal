@@ -1,30 +1,31 @@
 import ballerina/http;
+import ballerinax/health.hl7v2;
+import ballerinax/health.hl7v24;
 
 public isolated function buildRequestContextForHTTP(http:Request originalReq, http:Request transformedReq) returns HTTPRequstContext|error {
     // TODO:extract user details
     map<string> userDetails = check extractUserDetails(originalReq);
-    HTTPRequstContext reqCtx = {
-        username: userDetails["username"]?:"",
+    return {
+        username: userDetails["username"] ?: "",
         patientId: originalReq.getQueryParamValue("Patient") ?: "",
         contentType: originalReq.getContentType(),
         httpRequest: transformedReq
     };
-    return reqCtx;
 }
 
-public isolated function buildRequestContextForTCP(string data, json transformedData, string in_contentType) returns TcpRequestContext|error {
+public isolated function buildRequestContextForTCP(string data, hl7v2:Message hl7Message, json transformedData, string in_contentType) returns TcpRequestContext|error {
     // TODO: extract user details
-    TcpRequestContext reqCtx = {
+    hl7v24:MSH msh = <hl7v24:MSH>hl7Message["msh"];
+    return {
         contentType: in_contentType,
-        username: extractSendingApplication(data),
+        username: msh.msh3.hd1,
         fhirMessage: transformedData,
-        msgId: extractHL7MessageId(data),
-        eventCode: extractHL7MessageType(data),
+        msgId: msh.msh10,
+        eventCode: extractHl7MessageType(data),
         patientId: extractPatientId(data),
-        sendingFacility: extractSendingFacility(data),
-        receivingFacility: extractReceivingFacility(data),
-        sendingApplication: extractSendingApplication(data),
-        receivingApplication: extractRecievingApplication(data)
+        sendingFacility: msh.msh4.hd1,
+        receivingFacility: msh.msh6.hd1,
+        sendingApplication: msh.msh3.hd1,
+        receivingApplication: msh.msh5.hd1
     };
-    return reqCtx;
 }

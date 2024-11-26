@@ -49,10 +49,10 @@ public class HL7MessageTransformer {
         log:printInfo("Created an instance of JsonToFhirBuilder");
     }
 
-    public isolated function transform(string data) returns json|error {
+    public isolated function transform(string data) returns [json, hl7v2:Message]|error {
         hl7v2:Message hl7Message = check parseHl7Message(data);
         json v2tofhirResult = check v2tofhirr4:v2ToFhir(hl7Message);
-        return v2tofhirResult;
+        return [v2tofhirResult, hl7Message];
     }
 
     public isolated function revertTransformation(json data, TcpRequestContext reqCtx) returns byte[]|error {
