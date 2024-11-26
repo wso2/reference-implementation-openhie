@@ -57,7 +57,7 @@ public isolated function routeHttp(HTTPRequstContext reqCtx) returns ResponseCon
         HttpRoute targetRoute = check findRouteForHttpRequest(reqCtx.httpRequest.rawPath, reqCtx.httpRequest.method);
         http:Client _client = check getHTTPClient(targetRoute);
         http:Request _req = check createHTTPRequestforHTTP(reqCtx.httpRequest, targetRoute);
-        check audit_request(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
+        check auditRequest(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
         http:Response|error response;
         match _req.method {
             http:GET => {
@@ -83,7 +83,7 @@ public isolated function routeTCP(TcpRequestContext reqCtx) returns ResponseCont
         TcpRoute targetRoute = check findRouteForTcpRequest(reqCtx);
         http:Client _client = check getHTTPClient(targetRoute);
         http:Request _req = check createHTTPRequestforTCP(targetRoute, reqCtx);
-        check audit_request(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
+        check auditRequest(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
 
         http:Response|error response;
         match targetRoute.method {

@@ -3,24 +3,23 @@ import ballerina/time;
 
 isolated function sendAuditEvent(InternalAuditEvent auditEvent) returns error? {
     do {
-        check publish("audit", <json>auditEvent);
+        check publishToHub("audit", <json>auditEvent);
     } on fail error e {
         log:printError("Failed to send the audit event.", 'error = e);
     }
 }
 
-public isolated function audit_request(workflow workflow, string username, string objectID, string sysname) returns error? {
+public isolated function auditRequest(workflow workflow, string username, string objectID, string sysname) returns error? {
     match workflow {
         PATIENT_DEMOGRAPHICS_QUERY => {
-            check sendAuditEvent(audit_PDQ_request(username, objectID, sysname, "0"));
+            check sendAuditEvent(buildPdqAuditRequest(username, objectID, sysname, "0"));
         }
         PATIENT_DEMOGRAPHICS_UPDATE => {
-            check sendAuditEvent(audit_PDU_request(username, objectID, sysname, "0"));
+            check sendAuditEvent(buildPduAuditRequest(username, objectID, sysname, "0"));
         }
         PATIENT_DEMOGRAPHICS_CREATE => {
-            check sendAuditEvent(audit_PDC_request(username, objectID, sysname, "0"));
+            check sendAuditEvent(buildPdcAuditRequest(username, objectID, sysname, "0"));
         }
-        // ...
         // Add more cases for other workflows
         _ => {
             log:printError("Invalid workflow.");
@@ -28,8 +27,8 @@ public isolated function audit_request(workflow workflow, string username, strin
     }
 }
 
-// audit events for each workflow 
-public isolated function audit_PDQ_request(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
+// Audit Request for Patient Demographics Query 
+public isolated function buildPdqAuditRequest(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
     return {
         typeCode: "110112",
         subTypeCode: "READ",
@@ -47,7 +46,7 @@ public isolated function audit_PDQ_request(string username, string objectID, str
     };
 }
 
-public isolated function audit_PDC_request(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
+public isolated function buildPdcAuditRequest(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
     return {
         typeCode: "110112",
         subTypeCode: "CREATE",
@@ -65,7 +64,7 @@ public isolated function audit_PDC_request(string username, string objectID, str
     };
 }
 
-public isolated function audit_PDU_request(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
+public isolated function buildPduAuditRequest(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
     return {
         typeCode: "110112",
         subTypeCode: "UPDATE",

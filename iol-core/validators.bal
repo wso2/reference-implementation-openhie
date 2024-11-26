@@ -7,5 +7,5 @@ public isolated function attributeValidator(http:Request|http:Response msg) retu
 
 public isolated function requestValidatorHL7(string data) returns error? {
     // Validate the HL7 message
-    return isHL7Message(data) ? () : error("Invalid HL7 message Type");
+    return isHl7Message(data) ? () : error("Invalid HL7 message Type");
 }

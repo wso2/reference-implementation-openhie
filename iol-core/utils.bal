@@ -7,7 +7,7 @@ import ballerinax/health.hl7v23;
 const X_JWT_HEADER = "x-jwt-assertion";
 const IDP_CLAIMS = "idp_claims";
 
-isolated function sanitizeHL7Message(string message) returns string {
+isolated function sanitizeHl7Message(string message) returns string {
     // Trim leading and trailing whitespace or newline characters
     string sanitizedMessage = message.trim();
 
@@ -61,25 +61,25 @@ public isolated function extractUserDetails(http:Request httpRequest) returns ma
     }
 }
 
-public isolated function isHL7Message(string message) returns boolean {
-    return extractHL7Version(message) is string;
+public isolated function isHl7Message(string message) returns boolean {
+    return extractHl7Version(message) is string;
 }
 
 // TODO: use the hl7v2:extractHL7Version() function once it is support public access  
-isolated function extractHL7Version(string message) returns string? {
-    return extractHL7Field(message, 11);
+isolated function extractHl7Version(string message) returns string? {
+    return extractHl7Field(message, 11);
 }
 
-isolated function extractHL7MessageType(string message) returns string {
-    return extractHL7Field(message, 8) ?: "";
+isolated function extractHl7MessageType(string message) returns string {
+    return extractHl7Field(message, 8) ?: "";
 }
 
 isolated function extractPatientId(string message) returns string {
     string? pidField;
-    if (extractHL7MessageType(message) == "QBP^Q21") {
-        pidField = extractHL7Field(message, 3, 1) ?: "";
+    if (extractHl7MessageType(message) == "QBP^Q21") {
+        pidField = extractHl7Field(message, 3, 1) ?: "";
     } else {
-        pidField = extractHL7Field(message, 3, 2) ?: "";
+        pidField = extractHl7Field(message, 3, 2) ?: "";
     }
 
     if pidField is string {
@@ -89,27 +89,11 @@ isolated function extractPatientId(string message) returns string {
     return "";
 }
 
-isolated function extractHL7MessageId(string message) returns string {
-    return extractHL7Field(message, 9) ?: "";
+isolated function extractHl7MessageId(string message) returns string {
+    return extractHl7Field(message, 9) ?: "";
 }
 
-isolated function extractSendingFacility(string message) returns string {
-    return extractHL7Field(message, 3) ?: "";
-}
-
-isolated function extractReceivingFacility(string message) returns string {
-    return extractHL7Field(message, 5) ?: "";
-}
-
-isolated function extractSendingApplication(string message) returns string {
-    return extractHL7Field(message, 2) ?: "";
-}
-
-isolated function extractRecievingApplication(string message) returns string {
-    return extractHL7Field(message, 4) ?: "";
-}
-
-isolated function extractHL7Field(string message, int fieldIndex, int segmentIndex = 0) returns string? {
+isolated function extractHl7Field(string message, int fieldIndex, int segmentIndex = 0) returns string? {
     string[] splitMsg = re `\r`.split(message);
     if splitMsg.length() > segmentIndex {
         string[] splitFields = re `\|`.split(splitMsg[segmentIndex].trim());
@@ -128,7 +112,7 @@ public function splitString(string str, string delimiter) returns string[] {
     return re `${delimiter}`.split(str);
 }
 
-isolated function createHL7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns byte[]|error {
+isolated function createHl7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns byte[]|error {
     string hl7Version = "2.3";
     string timestamp = getCurrentTimestamp();
 
@@ -160,6 +144,10 @@ isolated function createHL7AckMessage(string sendingFacility, string receivingFa
 public isolated function getCurrentTimestamp() returns string {
     time:Utc currentTime = time:utcNow();
     return formatTimestamp(currentTime);
+}
+
+isolated function joinStrings(string[]? parts) returns string {
+    return string:'join(" ", ...parts ?: []);
 }
 
 isolated function formatTimestamp(time:Utc timestamp) returns string {

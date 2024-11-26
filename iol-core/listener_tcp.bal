@@ -13,8 +13,8 @@ service class TcpService {
 
     remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error|error? {
         string fromBytes = check string:fromBytes(data);
-        string sanitized = sanitizeHL7Message(fromBytes);
-        byte[] response = handleTCP(sanitized, caller);
+        string sanitized = sanitizeHl7Message(fromBytes);
+        byte[] response = handleTcp(sanitized, caller);
         check caller->writeBytes(response);
     }
 

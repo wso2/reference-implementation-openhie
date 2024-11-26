@@ -3,7 +3,7 @@ import ballerina/log;
 
 http:Service httpService = service object {
     isolated resource function 'default [string... path](http:Caller caller, http:Request req, http:RequestContext ctx) returns error? {
-        http:Response response = handleHTTP(req, caller);
+        http:Response response = handleHttp(req, caller);
         check caller->respond(response);
     }
 };

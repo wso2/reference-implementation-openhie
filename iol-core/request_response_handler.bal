@@ -2,11 +2,12 @@ import ballerina/http;
 import ballerina/log;
 import ballerina/tcp;
 import ballerina/time;
+import ballerinax/health.hl7v2;
 
 isolated function logTransaction(TransactionLog transactionLog) {
     log:printInfo(string `Transaction Log: ${transactionLog.toString()}`);
     do {
-        check publish("opensearch transaction", <json>transactionLog);
+        check publishToHub("opensearch transaction", <json>transactionLog);
     } on fail error e {
         log:printError("Failed to send the transaction event.", 'error = e);
     }
@@ -23,7 +24,7 @@ isolated function handleError(error e, TransactionLog transactionLog, string err
     return response;
 }
 
-public isolated function handleHTTP(http:Request req, http:Caller caller) returns http:Response {
+public isolated function handleHttp(http:Request req, http:Caller caller) returns http:Response {
     RequestLog requestLog = {
         host: caller.remoteAddress.host,
         port: caller.remoteAddress.port,
@@ -74,7 +75,7 @@ isolated function handleTcpError(error e, TransactionLog transactionLog, string 
     return errorMessage;
 }
 
-public isolated function handleTCP(string data, tcp:Caller caller) returns byte[] {
+public isolated function handleTcp(string data, tcp:Caller caller) returns byte[] {
     RequestLog requestLog = {
         host: caller.remoteHost,
         port: caller.remotePort,
@@ -94,9 +95,9 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
 
         string in_contentType = "hl7";
         TCPMessageTransformer messageTransformer = check getTCPMessageTransformer(in_contentType);
-        json transformedData = check messageTransformer.transform(data);
+        [json, hl7v2:Message] transformedData = check messageTransformer.transform(data);
 
-        TcpRequestContext reqCtx = check buildRequestContextForTCP(data, transformedData, in_contentType);
+        TcpRequestContext reqCtx = check buildRequestContextForTCP(data, transformedData[1], transformedData[0], in_contentType);
         transactionLog.clientId = reqCtx.username;
 
         ResponseContext|error resCtx = routeTCP(reqCtx);
@@ -105,14 +106,14 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
             transactionLog.status = FAILURE;
             transactionLog.errorMessage = resCtx.message();
             logTransaction(transactionLog);
-            return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, string `Failed to process message ${resCtx.message()}`);
+            return check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, string `Failed to process message ${resCtx.message()}`);
         }
         http:Response res = resCtx.response;
         workflow workflow = resCtx.route.workflow;
 
         match res.statusCode {
             http:STATUS_CREATED => {
-                byte[] ackMessage = check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource created successfully!");
+                byte[] ackMessage = check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource created successfully!");
                 string ackMessageStr = check string:fromBytes(ackMessage);
                 ResponseLog responseLog = {
                     status: "AA",
@@ -143,7 +144,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
                     return payload;
                 }
 
-                byte[] ackMessage = check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource updated successfully!");
+                byte[] ackMessage = check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AA", reqCtx.msgId, "Resource updated successfully!");
                 string ackMessageStr = check string:fromBytes(ackMessage);
                 ResponseLog responseLog = {
                     status: "AA",
@@ -162,7 +163,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
                 transactionLog.errorMessage = "Bad Request";
                 logTransaction(transactionLog);
 
-                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Bad Request");
+                return check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Bad Request");
             }
 
             http:STATUS_NOT_FOUND => {
@@ -170,7 +171,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
                 transactionLog.errorMessage = "Resource not found";
                 logTransaction(transactionLog);
 
-                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Resource not found");
+                return check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Resource not found");
             }
 
             http:STATUS_INTERNAL_SERVER_ERROR => {
@@ -178,7 +179,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
                 transactionLog.errorMessage = "Internal Server Error";
                 logTransaction(transactionLog);
 
-                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Internal Server Error");
+                return check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Internal Server Error");
             }
 
             _ => {
@@ -186,7 +187,7 @@ public isolated function handleTCP(string data, tcp:Caller caller) returns byte[
                 transactionLog.errorMessage = "Failed to process message";
                 logTransaction(transactionLog);
 
-                return check createHL7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Failed to process message");
+                return check createHl7AckMessage(reqCtx.sendingFacility, reqCtx.receivingFacility, reqCtx.sendingApplication, reqCtx.receivingApplication, "ACK^R01", "AE", reqCtx.msgId, "Failed to process message");
             }
         }
     } on fail error e {
