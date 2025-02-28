@@ -3,6 +3,7 @@ import ballerina/jwt;
 import ballerina/time;
 import ballerinax/health.hl7v2;
 import ballerinax/health.hl7v23;
+import ballerina/log;
 
 const X_JWT_HEADER = "x-jwt-assertion";
 const IDP_CLAIMS = "idp_claims";
@@ -112,7 +113,7 @@ public function splitString(string str, string delimiter) returns string[] {
     return re `${delimiter}`.split(str);
 }
 
-isolated function createHl7AckMessage(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns byte[]|error {
+isolated function generateHl7Acknowledgment(string sendingFacility, string receivingFacility, string sendingApp, string receivingApp, string messageType, string statusCode, string messageID, string details) returns byte[]|error {
     string hl7Version = "2.3";
     string timestamp = getCurrentTimestamp();
 
@@ -183,7 +184,11 @@ public isolated function extractPatientResource(json FhirMessage, string patient
     return error("Patient resource not found in the FHIR message");
 }
 
-public isolated function extractHeadersFromReq(http:Request req) returns map<string> {
+# Extracts the headers from the request.
+#
+# + req - HTTP request
+# + return - Headers from the request
+public isolated function extractRequestHeaders(http:Request req) returns map<string> {
     map<string> headers = {};
     string[] headerNames = req.getHeaderNames();
     foreach string headerName in headerNames {
@@ -195,7 +200,12 @@ public isolated function extractHeadersFromReq(http:Request req) returns map<str
     return headers;
 }
 
-public isolated function extractHeadersFromRes(http:Response res) returns map<string> {
+
+# Extracts the headers from the response.
+#
+# + res - HTTP response
+# + return - Headers from the response
+public isolated function extractResponseHeaders(http:Response res) returns map<string> {
     map<string> headers = {};
     string[] headerNames = res.getHeaderNames();
     foreach string headerName in headerNames {
@@ -205,4 +215,34 @@ public isolated function extractHeadersFromRes(http:Response res) returns map<st
         }
     }
     return headers;
+}
+
+
+# Logs the transaction details.
+#
+# + transactionLog - Details of the transaction
+isolated function logTransaction(TransactionLog transactionLog) {
+    log:printInfo(string `Transaction Log: ${transactionLog.toString()}`);
+    do {
+        check publishToHub("opensearch transaction", <json>transactionLog);
+    } on fail error e {
+        log:printError("Failed to send the transaction event.", 'error = e);
+    }
+}
+
+# Handles the error and returns an HTTP response with the error message.
+#
+# + e - Error object 
+# + transactionLog - Details of the transaction 
+# + errorMessage - Error message
+# + return - HTTP response with the error message
+isolated function handleError(error e, TransactionLog transactionLog, string errorMessage) returns http:Response {
+    transactionLog.status = FAILURE;
+    transactionLog.errorMessage = e.message();
+    logTransaction(transactionLog);
+
+    http:Response response = new;
+    response.statusCode = 500;
+    response.setPayload({message: errorMessage});
+    return response;
 }

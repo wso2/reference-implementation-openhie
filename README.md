@@ -31,6 +31,22 @@ The architecture consists of several components:
 
 ## Running the Services
 
+Run the setup.sh script to run all the services for the OpenHIE Interoperability Layer Reference Implementation.
+
+```sh
+sh setup.sh
+```
+
+**Note:** The setup script will start all services in the background using their default ports. Logs for each service can be found in the `logs` directory.
+
+**Note:** To access opensearch dashboard,
+```
+USERNAME="admin"
+PASSWORD="openHIEdemo!123"
+```
+
+If you want to run the services individually, follow the steps below:
+
 1. Start WebSubHub  
    ```sh
    cd websubhub/hub
@@ -47,13 +63,11 @@ The architecture consists of several components:
    ```sh
    cd fhir-workflows/patient-demographic-management-service
    bal run
-5. Navigate to OpenSearch directory and run `docker-compose up`
-
-for opensearch dashboard,
-```
-USERNAME="admin"
-PASSWORD="openHIEdemo!123"
-```
+5. Start OpenSearch Dashboard
+   ```sh
+   cd opensearch
+   docker-compose up
+   ```
 
 ## Endpoints
 

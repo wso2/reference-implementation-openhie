@@ -4,9 +4,6 @@
 # Log file
 *.log
 
-# Logs directory
-logs/
-
 # BlueJ files
 *.ctxt
 
@@ -24,7 +21,10 @@ logs/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+replay_pid*
 
-# Ballerina
+# All .devcontainer.json files
+.devcontainer.json
+
+# All target directories
 target/
-.vscode/

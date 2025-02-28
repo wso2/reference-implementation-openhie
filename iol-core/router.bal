@@ -1,3 +1,19 @@
+// Copyright (c) 2025 WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+//
+// WSO2 Inc. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/http;
 import ballerina/lang.regexp;
 import ballerina/log;
@@ -145,22 +161,21 @@ isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqC
 }
 
 isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns http:Request|error {
-    // http:Request customReq = req;
-    // customReq.rawPath = string `/?Patient=${req.getQueryParamValue("Patient") ?: ""}`; //TODO: change this to the actual path
-    http:Request CustomReq = new;
+    
+    http:Request outboundFHIRReq = new;
     regexp:RegExp pathRegex = check regexp:fromString(route.path);
     regexp:Groups? subPath = pathRegex.findGroups(req.rawPath);
-    CustomReq.rawPath = "/";
+    outboundFHIRReq.rawPath = "/";
     if subPath is regexp:Groups && subPath.length() > 1 {
-        CustomReq.rawPath = CustomReq.rawPath + (<regexp:Span>subPath[0]).substring();
+        outboundFHIRReq.rawPath = outboundFHIRReq.rawPath + (<regexp:Span>subPath[0]).substring();
     }
-    CustomReq.method = req.method;
+    outboundFHIRReq.method = req.method;
     if req.method == "GET" {
         return req;
     }
-    CustomReq.setPayload(check req.getJsonPayload(), "application/json");
+    outboundFHIRReq.setPayload(check req.getJsonPayload(), "application/json");
     // add query parameters
-    return CustomReq;
+    return outboundFHIRReq;
 }
 
 isolated function setRequestParams(TcpRoute route, TcpRequestContext reqCtx) returns string|error {
