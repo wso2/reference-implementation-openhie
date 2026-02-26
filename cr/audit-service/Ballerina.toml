@@ -1,0 +1,10 @@
+[package]
+authors = ["Ballerina"]
+distribution = "2201.13.1"
+keywords = ["Healthcare", "Audit", "Prebuilt", "Service"]
+name = "FhirAuditService"
+org = "wso2"
+version = "1.0.0"
+
+[build-options]
+observabilityIncluded = true

@@ -1,0 +1,328 @@
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  Button,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+} from '@wso2/oxygen-ui';
+import { GitMerge, Check, X, User, FileText } from 'lucide-react';
+import { getPatientName, getPatientIdentifier } from '../utils/fhirHelpers';
+import { formatDate } from '../utils/formatters';
+
+const fieldDefs = [
+  { key: 'name', label: 'Name', getValue: (p) => getPatientName(p) },
+  { key: 'identifier', label: 'Identifier', getValue: (p) => getPatientIdentifier(p) },
+  { key: 'birthDate', label: 'Birth Date', getValue: (p) => formatDate(p.birthDate) },
+  { key: 'gender', label: 'Gender', getValue: (p) => p.gender },
+  {
+    key: 'phone',
+    label: 'Phone',
+    getValue: (p) =>
+      p.telecom?.find((t) => t.system === 'phone')?.value || '\u2014',
+  },
+  {
+    key: 'address',
+    label: 'Address',
+    getValue: (p) =>
+      `${p.address?.[0]?.line?.join(', ') || ''}, ${p.address?.[0]?.city || ''}`,
+  },
+];
+
+export default function MergeModal({
+  group,
+  selections,
+  onSelectionChange,
+  onConfirm,
+  onCancel,
+}) {
+  if (!group) return null;
+
+  const patientCount = group.patients.length;
+
+  // Build merged preview
+  const mergedPreview = {};
+  fieldDefs.forEach((f) => {
+    const selectedIdx = selections[f.key] ?? 0;
+    mergedPreview[f.key] = f.getValue(group.patients[selectedIdx]);
+  });
+
+  return (
+    <Dialog
+      open
+      onClose={onCancel}
+      maxWidth={patientCount > 3 ? 'xl' : 'lg'}
+      fullWidth
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <GitMerge size={20} />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Merge {patientCount} Records
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          Select which value to keep for each field from {patientCount} matching
+          records. The merged patient preview is shown on the right.
+        </Typography>
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', gap: 3 }}>
+          {/* Left: Selection grid */}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
+            {/* Field label column */}
+            <Box sx={{ flexShrink: 0, width: 100 }}>
+              <Box
+                sx={{
+                  p: '10px 12px',
+                  bgcolor: 'background.default',
+                  borderRadius: '8px 0 0 0',
+                  borderRight: '2px solid',
+                  borderColor: 'divider',
+                  height: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  Field
+                </Typography>
+              </Box>
+              {fieldDefs.map((field) => (
+                <Box
+                  key={field.key}
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    height: 52,
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRight: '2px solid',
+                    borderRightColor: 'divider',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Typography
+                    sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}
+                  >
+                    {field.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+
+            {/* Scrollable columns */}
+            <Box sx={{ flex: 1, overflowX: 'auto', minWidth: 0 }}>
+              {/* Column headers */}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${patientCount}, minmax(180px, 1fr))`,
+                  gap: 1,
+                  p: '10px 12px',
+                  bgcolor: 'background.default',
+                  borderRadius: '0 8px 0 0',
+                  height: 40,
+                  alignItems: 'center',
+                  minWidth:
+                    patientCount > 3 ? `${patientCount * 190}px` : undefined,
+                }}
+              >
+                {group.patients.map((p, i) => (
+                  <Typography
+                    key={p.id}
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                    }}
+                  >
+                    <FileText size={14} /> M{i + 1}
+                  </Typography>
+                ))}
+              </Box>
+
+              {/* Data rows */}
+              {fieldDefs.map((field) => (
+                <Box
+                  key={field.key}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${patientCount}, minmax(180px, 1fr))`,
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    alignItems: 'center',
+                    height: 52,
+                    minWidth:
+                      patientCount > 3 ? `${patientCount * 190}px` : undefined,
+                  }}
+                >
+                  {group.patients.map((patient, idx) => {
+                    const isSelected = selections[field.key] === idx;
+                    return (
+                      <Box
+                        key={patient.id}
+                        component="label"
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          px: 1.25,
+                          py: 1,
+                          bgcolor: isSelected ? '#eff6ff' : 'background.default',
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          color: 'text.primary',
+                          border: '2px solid',
+                          borderColor: isSelected
+                            ? 'primary.main'
+                            : 'transparent',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <Radio
+                          size="small"
+                          checked={isSelected}
+                          onChange={() => onSelectionChange(field.key, idx)}
+                          sx={{ p: 0 }}
+                        />
+                        <Typography
+                          noWrap
+                          sx={{ fontSize: 12 }}
+                        >
+                          {field.getValue(patient)}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Right: Merged Preview */}
+          <Box
+            sx={{
+              width: 280,
+              flexShrink: 0,
+              bgcolor: 'success.light',
+              borderRadius: 3,
+              border: '2px solid #86efac',
+              overflow: 'hidden',
+              alignSelf: 'flex-start',
+              position: 'sticky',
+              top: 0,
+            }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1.75,
+                bgcolor: 'success.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+              }}
+            >
+              <User size={20} />
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+                  Merged Patient
+                </Typography>
+                <Typography sx={{ fontSize: 11, opacity: 0.85 }}>
+                  Golden Record Preview
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ px: 2, py: 1.5 }}>
+              {fieldDefs.map((f) => (
+                <Box
+                  key={f.key}
+                  sx={{ py: 1, borderBottom: '1px solid #dcfce7' }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      color: 'success.main',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {f.label}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      mt: 0.25,
+                    }}
+                  >
+                    {mergedPreview[f.key]}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      </DialogContent>
+
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2.5,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+        }}
+      >
+        <Button onClick={onCancel} sx={{ color: 'text.secondary' }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onCancel}
+          startIcon={<X size={16} />}
+          sx={{
+            bgcolor: 'error.light',
+            color: 'error.main',
+            '&:hover': { bgcolor: '#fecaca' },
+          }}
+        >
+          Deny
+        </Button>
+        <Button
+          variant="contained"
+          color="success"
+          onClick={onConfirm}
+          startIcon={<Check size={16} />}
+        >
+          Approve & Merge
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
