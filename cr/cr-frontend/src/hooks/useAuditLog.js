@@ -60,8 +60,11 @@ export function useAuditLog() {
             .then(result => {
               if (Array.isArray(result) && result.length > 0) {
                 setLogs(prev => {
-                  const updated = [...result, ...prev];
-                  _set(cacheKey, updated, cached.offset + result.length, cached.hasMore);
+                  const existingIds = new Set(prev.map(l => l.id));
+                  const newItems = result.filter(l => !existingIds.has(l.id));
+                  if (newItems.length === 0) return prev;
+                  const updated = [...newItems, ...prev];
+                  _set(cacheKey, updated, cached.offset + newItems.length, cached.hasMore);
                   return updated;
                 });
               }
@@ -167,7 +170,10 @@ export function useAuditLog() {
         .then((result) => {
           if (Array.isArray(result) && result.length > 0) {
             setLogs(prev => {
-              const updated = [...result, ...prev];
+              const existingIds = new Set(prev.map(l => l.id));
+              const newItems = result.filter(l => !existingIds.has(l.id));
+              if (newItems.length === 0) return prev;
+              const updated = [...newItems, ...prev];
               const cacheKey = _key(filters, sortOrderRef.current);
               const existing = _get(cacheKey);
               if (existing) _set(cacheKey, updated, existing.offset, existing.hasMore);

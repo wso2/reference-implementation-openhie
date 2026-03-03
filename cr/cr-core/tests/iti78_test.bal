@@ -38,27 +38,37 @@ string createdPatientId2 = "";
 function getAdminToken() returns string {
     string payload = "{\"sub\":\"test-admin@test.com\",\"role\":\"admin\",\"exp\":9999999999999}";
     string|byte[]|mime:EncodeError|io:ReadableByteChannel encoded = mime:base64Encode(payload.toBytes());
+    string raw;
     if encoded is string {
-        return encoded;
-    }
-    if encoded is byte[] {
+        raw = encoded;
+    } else if encoded is byte[] {
         string|error s = string:fromBytes(encoded);
-        return s is string ? s : "invalid";
+        if s is error {
+            return "invalid";
+        }
+        raw = s;
+    } else {
+        return "invalid";
     }
-    return "invalid";
+    return re `[\r\n]`.replaceAll(raw, "");
 }
 
 function getViewerToken() returns string {
     string payload = "{\"sub\":\"test-viewer@test.com\",\"role\":\"viewer\",\"exp\":9999999999999}";
     string|byte[]|mime:EncodeError|io:ReadableByteChannel encoded = mime:base64Encode(payload.toBytes());
+    string raw;
     if encoded is string {
-        return encoded;
-    }
-    if encoded is byte[] {
+        raw = encoded;
+    } else if encoded is byte[] {
         string|error s = string:fromBytes(encoded);
-        return s is string ? s : "invalid";
+        if s is error {
+            return "invalid";
+        }
+        raw = s;
+    } else {
+        return "invalid";
     }
-    return "invalid";
+    return re `[\r\n]`.replaceAll(raw, "");
 }
 
 // ============================================================

@@ -426,7 +426,7 @@ public isolated function updatePatient(string id, pdqm:PDQmPatient patient)
     }
 
     // Build resource JSON with updated meta
-    json resourceJsonObj = check updatedPatient.toJson();
+    json resourceJsonObj = updatedPatient.toJson();
     json metaJson = {
         "versionId": newVersion.toString(),
         "lastUpdated": now
