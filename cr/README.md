@@ -47,13 +47,15 @@ openhie_cr/
 │   │   ├── api/              # API clients (patientService, auditService, matchService)
 │   │   ├── auth/             # AuthContext (Asgardeo + simulated), ProtectedRoute
 │   │   ├── components/       # Reusable UI components
-│   │   ├── hooks/            # Custom React hooks
+│   │   ├── hooks/            # Custom React hooks (useAuditLog, useUserPreferences)
 │   │   ├── layouts/          # AppLayout with navigation
-│   │   ├── pages/            # LoginPage, DashboardPage, PatientsPage, AuditPage
+│   │   ├── pages/            # LoginPage, DashboardPage, PatientsPage, AuditPage, ProfileSettingsPage
 │   │   ├── utils/            # FHIR helpers, formatters, match utilities
 │   │   └── theme.js          # WSO2 Oxygen UI theme
+│   ├── public/Registry.png   # App logo displayed in the header
 │   └── vite.config.js        # Dev proxy: /api → 9090, /audit-api → 9093
 │
+├── start.sh                  # One-command launcher (audit-service + cr-core + cr-frontend)
 ├── seed-patients.sh          # Seed sample patients
 ├── seed-large.sh             # Seed up to 500 000 patients (bulk)
 ├── seed-dedup-scenarios.sh   # Seed duplicate groups for dedup demo
@@ -70,7 +72,23 @@ openhie_cr/
 
 ## Quick Start
 
-### 1. Start the Audit Service
+### One-Command Start (recommended)
+
+```bash
+bash start.sh
+```
+
+This starts all three services in order (audit-service → cr-core → cr-frontend) and shuts them all down on `Ctrl+C`. Frontend dependencies are installed automatically if `node_modules` is missing.
+
+```
+Audit Service  → http://localhost:9093
+MPI Backend    → http://localhost:9090/fhir/r4
+Frontend       → http://localhost:5173
+```
+
+### Manual Start
+
+#### 1. Start the Audit Service
 
 ```bash
 cd audit-service
@@ -78,7 +96,7 @@ bal run
 # Listening on http://localhost:9093
 ```
 
-### 2. Start the MPI Backend
+#### 2. Start the MPI Backend
 
 ```bash
 cd cr-core
@@ -86,7 +104,7 @@ bal run
 # Listening on http://localhost:9090/fhir/r4
 ```
 
-### 3. Start the Frontend
+#### 3. Start the Frontend
 
 ```bash
 cd cr-frontend
@@ -458,6 +476,8 @@ When Asgardeo env vars are not set, the app uses a simulated auth provider. Any 
 | `cr-frontend/src/auth/ProtectedRoute.jsx` | Route guard that redirects unauthenticated users to `/login` |
 | `cr-frontend/src/api/client.js` | API client that attaches `Authorization` and `X-User-Id` headers |
 | `cr-frontend/src/pages/LoginPage.jsx` | Login UI (Asgardeo button or simulated form) |
+| `cr-frontend/src/pages/ProfileSettingsPage.jsx` | Profile info, preferences, and session management (`/settings`) |
+| `cr-frontend/src/hooks/useUserPreferences.js` | localStorage-backed preferences (page size, date format, audit auto-refresh) |
 | `cr-frontend/.env.example` | Template for Asgardeo environment variables |
 
 ### Architecture Diagram
@@ -479,6 +499,31 @@ When Asgardeo env vars are not set, the app uses a simulated auth provider. Any 
 ```
 
 > **Phase 2 (planned):** The backend will validate real Asgardeo JWTs via the JWKS endpoint, replacing the bridge token approach.
+
+## Profile & Settings (`/settings`)
+
+The settings page is accessible via the gear icon in the app header and is available to all authenticated users.
+
+### Tabs
+
+| Tab | Description |
+|-----|-------------|
+| **Profile** | Read-only view of IdP-sourced user info (email, display name, role, groups) |
+| **Preferences** | User-configurable UI settings persisted in `localStorage` |
+| **Session** | Current session expiry timestamp and sign-out button |
+
+### Preferences
+
+Stored in `localStorage` under the key `user_preferences`. Applied immediately — no page reload required.
+
+| Preference | Default | Options |
+|------------|---------|---------|
+| `defaultPageSize` | `10` | 5, 10, 25, 50 rows |
+| `dateFormat` | `relative` | `relative` (e.g. "2 hours ago"), `absolute` (e.g. "Mar 3, 2026 14:30") |
+| `auditAutoRefresh` | `true` | true / false |
+| `auditRefreshInterval` | `30` | 15, 30, 60 seconds |
+
+Preferences can be reset to defaults via the **Reset to Defaults** button.
 
 ## Deduplication Process Flowchart
 

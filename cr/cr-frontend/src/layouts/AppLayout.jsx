@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router';
+import { Outlet, NavLink, useNavigate } from 'react-router';
 import {
   AppBar,
   Toolbar,
@@ -10,7 +10,7 @@ import {
   Badge,
   Chip,
 } from '@wso2/oxygen-ui';
-import { Database, Settings, LogOut, Link, Users, History } from 'lucide-react';
+import { Settings, LogOut, Link, Users, History } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 const navItems = [
@@ -21,14 +21,15 @@ const navItems = [
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
       <AppBar position="static" sx={{ bgcolor: 'secondary.dark', borderRadius: 0 }}>
         <Toolbar sx={{ px: { xs: 2, sm: 4 } }}>
-          <Box sx={{ mr: 1.5, color: 'text.secondary', display: 'flex' }}>
-            <Database size={20} />
+          <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center' }}>
+            <img src="/Registry.png" alt="Registry" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </Box>
           <Typography
             variant="h6"
@@ -50,7 +51,12 @@ export default function AppLayout() {
             }}
           />
           <Box sx={{ flex: 1 }} />
-          <IconButton color="inherit" sx={{ color: 'text.disabled' }}>
+          <IconButton
+            color="inherit"
+            onClick={() => navigate('/settings')}
+            title="Profile & Settings"
+            sx={{ color: 'text.disabled' }}
+          >
             <Settings size={20} />
           </IconButton>
           <Avatar

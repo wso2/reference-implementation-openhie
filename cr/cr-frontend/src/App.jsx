@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PatientsPage from './pages/PatientsPage';
 import AuditPage from './pages/AuditPage';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/patients" element={<PatientsPage />} />
           <Route path="/audit" element={<AuditPage />} />
+          <Route path="/settings" element={<ProfileSettingsPage />} />
         </Route>
       </Route>
 

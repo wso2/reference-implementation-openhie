@@ -28,13 +28,14 @@ import PatientMatchDialog from '../components/PatientMatchDialog';
 import NotificationSnackbar from '../components/NotificationSnackbar';
 import { usePatients } from '../hooks/usePatients';
 import { useNotification } from '../hooks/useNotification';
+import { getPreferences } from '../hooks/useUserPreferences';
 import { deletePatient, reactivatePatient, listPatients } from '../api/patientService';
 import { getPatientName, getPatientCRUID } from '../utils/fhirHelpers';
 import { formatDate } from '../utils/formatters';
 
 export default function PatientsPage() {
   const { patients, total, page, pageSize, loading, error, search, goToPage, setPageSize } =
-    usePatients();
+    usePatients(getPreferences().defaultPageSize);
   const { notification, showNotification, dismissNotification } = useNotification();
 
   // Registry stats
@@ -65,8 +66,11 @@ export default function PatientsPage() {
 
   useEffect(() => {
     search({ active: true });
+  }, [search]);
+
+  useEffect(() => {
     loadStats();
-  }, [search, loadStats]);
+  }, []);
 
   const handleSearch = (filters) => {
     setActiveFilters(filters);

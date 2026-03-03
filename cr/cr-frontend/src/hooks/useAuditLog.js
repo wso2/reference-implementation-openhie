@@ -1,8 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchAuditLogs as apiFetchAuditLogs } from '../api/auditService';
-
-const POLL_INTERVAL = 30000; // 30 seconds
+import { getPreferences } from './useUserPreferences';
 const DEFAULT_LIMIT = 50;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Module-level cache — survives component unmount/remount
+const _cache = new Map();
+
+function _key(filters, sortOrder) {
+  const { subtype = null, since = null, before = null } = filters || {};
+  return `${sortOrder}:${JSON.stringify({ subtype, since, before })}`;
+}
+
+function _get(key) {
+  const e = _cache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.cachedAt > CACHE_TTL) { _cache.delete(key); return null; }
+  return e;
+}
+
+function _set(key, logs, offset, hasMore) {
+  _cache.set(key, { logs, offset, hasMore, cachedAt: Date.now() });
+}
 
 export function useAuditLog() {
   const [logs, setLogs] = useState([]);
@@ -24,6 +43,36 @@ export function useAuditLog() {
 
   const fetchLogs = useCallback(async (filters = {}) => {
     filtersRef.current = filters;
+    const cacheKey = _key(filters, sortOrderRef.current);
+    const cached = _get(cacheKey);
+
+    if (cached) {
+      // Instant restore from cache — no loading spinner
+      setLogs(cached.logs);
+      offsetRef.current = cached.offset;
+      setHasMore(cached.hasMore);
+
+      // Background refresh: silently fetch new items since the newest cached log
+      if (sortOrderRef.current === 'desc' && !filters.since && !filters.before) {
+        const newestTs = cached.logs.length > 0 ? cached.logs[0].timestamp : undefined;
+        if (newestTs) {
+          apiFetchAuditLogs({ ...filters, limit: DEFAULT_LIMIT, offset: 0, sortOrder: 'desc', since: newestTs })
+            .then(result => {
+              if (Array.isArray(result) && result.length > 0) {
+                setLogs(prev => {
+                  const updated = [...result, ...prev];
+                  _set(cacheKey, updated, cached.offset + result.length, cached.hasMore);
+                  return updated;
+                });
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // Cache miss — full fetch
     offsetRef.current = 0;
     setLoading(true);
     setError(null);
@@ -37,7 +86,9 @@ export function useAuditLog() {
       const data = Array.isArray(result) ? result : [];
       setLogs(data);
       offsetRef.current = data.length;
-      setHasMore(data.length === DEFAULT_LIMIT);
+      const more = data.length === DEFAULT_LIMIT;
+      setHasMore(more);
+      _set(cacheKey, data, data.length, more);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,9 +108,15 @@ export function useAuditLog() {
         sortOrder: sortOrderRef.current,
       });
       if (Array.isArray(result)) {
-        setLogs(prev => [...prev, ...result]);
-        offsetRef.current += result.length;
-        setHasMore(result.length === DEFAULT_LIMIT);
+        const newOffset = offsetRef.current + result.length;
+        const newHasMore = result.length === DEFAULT_LIMIT;
+        offsetRef.current = newOffset;
+        setHasMore(newHasMore);
+        setLogs(prev => {
+          const updated = [...prev, ...result];
+          _set(_key(filtersRef.current, sortOrderRef.current), updated, newOffset, newHasMore);
+          return updated;
+        });
       }
     } catch (err) {
       setError(err.message);
@@ -85,6 +142,9 @@ export function useAuditLog() {
   useEffect(() => {
     if (sortOrder !== 'desc') return;
 
+    const { auditAutoRefresh, auditRefreshInterval } = getPreferences();
+    if (!auditAutoRefresh) return;
+
     intervalRef.current = setInterval(() => {
       // Skip polling when a date range filter is active
       const filters = filtersRef.current;
@@ -106,14 +166,19 @@ export function useAuditLog() {
       apiFetchAuditLogs(params)
         .then((result) => {
           if (Array.isArray(result) && result.length > 0) {
-            setLogs(prev => [...result, ...prev]);
-            // Don't change offsetRef — polling prepends, doesn't affect pagination position
+            setLogs(prev => {
+              const updated = [...result, ...prev];
+              const cacheKey = _key(filters, sortOrderRef.current);
+              const existing = _get(cacheKey);
+              if (existing) _set(cacheKey, updated, existing.offset, existing.hasMore);
+              return updated;
+            });
           }
         })
         .catch(() => {
           // Silent fail on polling
         });
-    }, POLL_INTERVAL);
+    }, auditRefreshInterval * 1000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
