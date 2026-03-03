@@ -457,8 +457,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo(string `ITI-78: Read Patient/${id}`);
 
         // Authenticate and authorize (read-only: admin + viewer)
-        // optional=true: allows FHIR preprocessor's internal conditional search calls
-        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER], optional = true);
+        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER]);
         if authResult is AuthenticationError {
             return <http:Unauthorized>{body: errorOutcome(authResult.message())};
         }
@@ -495,8 +494,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo("ITI-78: Search Patient");
 
         // Authenticate and authorize (read-only: admin + viewer)
-        // optional=true: allows FHIR preprocessor's internal conditional search calls
-        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER], optional = true);
+        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER]);
         if authResult is AuthenticationError {
             return <http:Unauthorized>{body: errorOutcome(authResult.message())};
         }
