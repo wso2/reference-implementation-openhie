@@ -960,29 +960,58 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
     }
 
     // ========================================
-    // Metadata
+    // Capabilities Interaction (FHIR §3.2.0.10)
+    // GET /fhir/r4/metadata
+    // ITI-104 §2.3.104.4.1.3: SHALL advertise conditionalUpdate on Patient
     // ========================================
     resource function get metadata(r4:FHIRContext ctx) returns json {
         return {
             "resourceType": "CapabilityStatement",
+            "id": "openhie-cr-capabilities",
+            "name": "OpenHIEClientRegistryCapabilities",
+            "title": "OpenHIE Client Registry Capability Statement",
             "status": "active",
+            "experimental": false,
+            "date": "2025-01-01",
+            "publisher": "OpenHIE",
+            "description": "Capability Statement for the OpenHIE Client Registry. Implements IHE ITI-78 (PDQm), ITI-104 (PIXm Feed), and ITI-119 (Patient Match).",
+            "kind": "instance",
             "fhirVersion": "4.0.1",
-            "format": ["json"],
-            "rest": [{
-                "mode": "server",
-                "resource": [{
-                    "type": "Patient",
-                    "profile": "https://profiles.ihe.net/ITI/PDQm/StructureDefinition/IHE.PDQm.Patient",
-                    "interaction": [
-                        {"code": "read"},
-                        {"code": "search-type"},
-                        {"code": "create"},
-                        {"code": "update"},
-                        {"code": "delete"}
-                    ],
-                    "operation": [{"name": "match"}]
-                }]
-            }]
+            "format": ["application/fhir+json", "json"],
+            "implementationGuide": [
+                "https://profiles.ihe.net/ITI/PDQm/ImplementationGuide/ihe.iti.pdqm",
+                "https://profiles.ihe.net/ITI/PIXm/ImplementationGuide/ihe.iti.pixm"
+            ],
+            "rest": [
+                {
+                    "mode": "server",
+                    "resource": [
+                        {
+                            "type": "Patient",
+                            "profile": "https://profiles.ihe.net/ITI/PDQm/StructureDefinition/IHE.PDQm.Patient",
+                            "interaction": [
+                                {"code": "read"},
+                                {"code": "search-type"},
+                                {"code": "update"},
+                                {"code": "delete"}
+                            ],
+                            // ITI-104 §2.3.104.4.1.3: conditionalUpdate SHALL be true
+                            "conditionalUpdate": true,
+                            // ITI-104 §2.3.104.4.1.3: conditionalDelete SHALL be advertised when Remove Patient is supported
+                            "conditionalDelete": "single",
+                            "searchParam": [
+                                {"name": "identifier",       "type": "string"}
+                            ],
+                            "operation": [
+                                {
+                                    "name": "match",
+                                    "definition": "http://hl7.org/fhir/OperationDefinition/Patient-match"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         };
     }
 }

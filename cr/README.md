@@ -23,6 +23,7 @@ A standards-based **Master Patient Index (MPI)** implementation for health infor
 
 ## Repository Structure
 
+# Service starts at http://localhost:9090/fhir/r4
 ```
 openhie_cr/
 ├── cr-core/                  # Ballerina FHIR MPI backend
@@ -213,6 +214,7 @@ bal run
 
 ### Seed Patients
 
+#### Search Patients (ITI-78)
 ```bash
 # Seed a small set of patients
 bash seed-patients.sh

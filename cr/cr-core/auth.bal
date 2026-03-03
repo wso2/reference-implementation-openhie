@@ -28,8 +28,9 @@ const string ROLE_VIEWER = "viewer";
 #
 # + ctx - The FHIR context object (provides access to request headers)
 # + allowedRoles - Roles permitted for this endpoint
-# + optional - If true, missing token returns a system user instead of error
-#              (needed for FHIR preprocessor's internal conditional search calls)
+# + optional - If true, a missing HTTP request (internal framework call with no transport context)
+#              returns a system user instead of an error. An HTTP request with a missing
+#              Authorization header still returns AuthenticationError regardless of this flag.
 # + return - AuthUser on success, or auth error
 function authenticateAndAuthorize(r4:FHIRContext ctx, string[] allowedRoles, boolean optional = false)
         returns AuthUser|AuthenticationError|AuthorizationError {
@@ -54,10 +55,6 @@ function authenticateAndAuthorize(r4:FHIRContext ctx, string[] allowedRoles, boo
         }
     }
     if authValues is () || authValues.length() == 0 {
-        if optional {
-            log:printInfo("Auth: No Authorization header — treating as internal system call");
-            return {email: "system", role: ROLE_ADMIN};
-        }
         log:printError("Auth failed: Missing Authorization header");
         return error AuthenticationError("Missing Authorization header");
     }

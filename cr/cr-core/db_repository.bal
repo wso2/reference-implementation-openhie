@@ -1073,6 +1073,10 @@ public isolated function matchPatients(
 }
 
 # Full-scan fallback for matchPatients (used when blocking is disabled or input is sparse).
+# + inputPatient - Patient demographics to match
+# + threshold - Minimum match score (0.0-1.0)
+# + maxResults - Maximum results to return
+# + return - Array of match results sorted by score
 isolated function matchPatientsFull(
         pdqm:PDQmPatient inputPatient,
         decimal threshold = 0.3d,
@@ -1941,6 +1945,9 @@ isolated function hasRejectedPairDecision(string patientId1, string patientId2) 
 }
 
 # Load a patient by ID with an in-memory cache to avoid redundant DB reads.
+# + patientId - The patient's CRUID
+# + cache - In-memory cache of patient IDs to PDQmPatient objects
+# + return - The PDQmPatient object or error
 function loadPatientCached(string patientId, map<pdqm:PDQmPatient> cache) returns pdqm:PDQmPatient|error {
     if cache.hasKey(patientId) {
         return cache.get(patientId);
@@ -1957,6 +1964,9 @@ function loadPatientCached(string patientId, map<pdqm:PDQmPatient> cache) return
 }
 
 # Full-scan fallback for dedup (used when blocking is disabled).
+#
+# + threshold - Minimum score to consider a match (default 0.6)
+# + return - DedupResult containing all match groups, or error
 function deduplicatePatientsFull(decimal threshold = 0.6d) returns DedupResult|error {
     stream<PatientRow, sql:Error?> rowStream = dbClient->query(
         `SELECT * FROM patients WHERE active = true`
@@ -2123,10 +2133,7 @@ public function closeDatabase() returns error? {
     check dbClient.close();
 }
 
-#add new identifier to patient
-# + newPatient - PDQmPatient resource to store
-# + return - Created patient with assigned ID or error
-# + value - identifier value to add
+
 # Merge identifiers from two patients into a union set, deduplicated by system|value.
 # Incoming identifiers take precedence; existing ones not in the incoming set are appended.
 # Uses JSON-level manipulation (same pattern as addCRIdentifier) to avoid typed record issues.

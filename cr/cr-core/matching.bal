@@ -81,7 +81,9 @@ configurable BlockingConfig blocking = {
 
 # A pre-computed blocking key for candidate selection.
 type BlockingKey record {|
+    # The type of blocking key (e.g., "SDX_FAM_DOB", "PHONE", "IDENT")
     string blockType;
+    # The computed value of the blocking key
     string blockValue;
 |};
 
