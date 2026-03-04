@@ -1,6 +1,9 @@
 name: Create Issues from PR Review Comments
 
 on:
+  push:
+    branches:
+      - 'copilot/create-issues-for-comments'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -24,8 +27,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prNumber = parseInt(context.payload.inputs.pr_number);
-            const titlePrefix = context.payload.inputs.title_prefix;
+            const prNumber = parseInt(context.payload.inputs?.pr_number ?? '1');
+            const titlePrefix = context.payload.inputs?.title_prefix ?? '[OpenHIE]';
 
             // Get all review comments from the PR
             const reviewComments = await github.paginate(
