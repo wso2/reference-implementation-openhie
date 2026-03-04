@@ -1,9 +1,7 @@
 name: Create Issues from PR 1 Review Comments
 
 on:
-  push:
-    branches:
-      - 'copilot/create-issues-for-comments'
+  workflow_dispatch:
 
 permissions:
   issues: write
