@@ -1,0 +1,95 @@
+name: Create Issues from PR 1 Review Comments
+
+on:
+  push:
+    branches:
+      - 'copilot/create-issues-for-comments'
+
+permissions:
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issues from PR #1 review comments
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issues = [
+              {
+                title: "[OpenHIE] let's update to latest compatible Ballerina version",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `audit-service/Ballerina.toml`\n**Line:** 3\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881683725\n\n---\n\nlet's update to latest compatible Ballerina version",
+              },
+              {
+                title: "[OpenHIE] let's add these configs to Config.toml file",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `audit-service/utils.bal`\n**Line:** 27\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881690692\n\n---\n\nlet's add these configs to Config.toml file",
+              },
+              {
+                title: "[OpenHIE] Can we have a function type or interface to handle the persistence layer?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `audit-service/utils.bal`\n**Line:** 31\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881694483\n\n---\n\nCan we have a function type or interface to handle the persistence layer?",
+              },
+              {
+                title: "[OpenHIE] Is this a FHIR endpoint?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `fhir-workflows/patient-demographic-management-service/service.bal`\n**Line:** 24\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881705779\n\n---\n\nIs this a FHIR endpoint?",
+              },
+              {
+                title: "[OpenHIE] Can't we use fhirClient to query data here?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `fhir-workflows/patient-demographic-management-service/service.bal`\n**Line:** 30\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881707342\n\n---\n\nCan't we use fhirClient to query data here?",
+              },
+              {
+                title: "[OpenHIE] Don't we need to make these configurable?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/audit.bal`\n**Line:** 49\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881730298\n\n---\n\nDon't we need to make these configurable?",
+              },
+              {
+                title: "[OpenHIE] or use one utility function to build all requests?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/audit.bal`\n**Line:** 49\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881733110\n\n---\n\nor use one utility function to build all requests?",
+              },
+              {
+                title: "[OpenHIE] Let's remove if not needed",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/audit.bal`\n**Line:** 101\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881731506\n\n---\n\nLet's remove if not needed",
+              },
+              {
+                title: "[OpenHIE] missing license",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/event_publisher.bal`\n**Line:** 1\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881754418\n\n---\n\nmissing license",
+              },
+              {
+                title: "[OpenHIE] Are we supporting only v2.4?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/fhir_to_hl7_mapper.bal`\n**Line:** 22\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881758934\n\n---\n\nAre we supporting only v2.4?",
+              },
+              {
+                title: "[OpenHIE] remove if not needed",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `iol-core/request_response_handler.bal`\n**Line:** 89\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881763738\n\n---\n\nremove if not needed",
+              },
+              {
+                title: "[OpenHIE] do we need to commit this file?",
+                body: "This issue was created from a review comment in PR #1.\n\n**File:** `opensearch/saved_objects.ndjson`\n**Comment URL:** https://github.com/wso2/reference-implementation-openhie/pull/1#discussion_r2881772478\n\n---\n\ndo we need to commit this file?",
+              },
+            ];
+
+            // Get existing issue titles to avoid duplicates
+            const existingIssues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'all',
+                per_page: 100,
+              }
+            );
+            const existingTitles = new Set(existingIssues.map(i => i.title));
+
+            for (const issue of issues) {
+              if (existingTitles.has(issue.title)) {
+                console.log(`Skipping (already exists): ${issue.title}`);
+                continue;
+              }
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issue.title,
+                body: issue.body,
+              });
+              console.log(`Created: ${issue.title}`);
+            }
