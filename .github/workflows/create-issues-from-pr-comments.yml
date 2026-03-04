@@ -17,6 +17,7 @@ on:
 
 permissions:
   issues: write
+  pull-requests: read
 
 jobs:
   create-issues:
@@ -59,7 +60,11 @@ jobs:
             let skipped = 0;
 
             for (const comment of reviewComments) {
-              const title = `${titlePrefix} ${comment.body}`;
+              const commentBody = comment.body.trim();
+              const truncatedBody = commentBody.length > 100
+                ? commentBody.substring(0, 97) + '...'
+                : commentBody;
+              const title = `${titlePrefix} ${truncatedBody}`;
 
               // Skip if issue already exists with this title
               if (existingTitles.has(title)) {
@@ -73,7 +78,7 @@ jobs:
                 `This issue was created from a review comment in PR #${prNumber}.`,
                 '',
                 `**File:** \`${comment.path}\``,
-                lineRef ? `**Line:** ${lineRef}` : '',
+                lineRef ? `**Line:** ${lineRef}` : null,
                 `**Comment URL:** ${comment.html_url}`,
                 '',
                 '---',
