@@ -6,6 +6,7 @@ This repository contains the reference implementation of the OpenHIE Interoperab
 
 - [Features](#features)
 - [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
 - [Running the Services](#running-the-services)
 - [Endpoints](#endpoints)
 
@@ -29,12 +30,22 @@ The architecture consists of several components:
 - **Audit Service**: Logs audit events and publishes them to the WebSub hub and OpenSearch.
 - **WebSub Hub**: Manages subscriptions and notifications for event-driven communication.
 
+## Prerequisites
+
+| Requirement | Details |
+|---|---|
+| [Ballerina](https://ballerina.io/downloads/) | Swan Lake (tested on 2201.13.1) |
+| [Docker](https://www.docker.com/products/docker-desktop/) | For OpenSearch via Docker Compose |
+| [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `setup.sh` |
+
+> **Windows users:** Run the script with `bash` (Git Bash), not `sh` or PowerShell. The script calls `bal.bat` which is only resolvable in a Bash environment with the Ballerina `bin` directory on PATH.
+
 ## Running the Services
 
 Run the setup.sh script to run all the services for the OpenHIE Interoperability Layer Reference Implementation.
 
-```sh
-sh setup.sh
+```bash
+bash setup.sh
 ```
 
 **Note:** The setup script will start all services in the background using their default ports. Logs for each service can be found in the `logs` directory.

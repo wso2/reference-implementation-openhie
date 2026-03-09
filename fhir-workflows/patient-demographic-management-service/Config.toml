@@ -1,2 +1,0 @@
-PORT = 9092
-FHIR_SERVER = "http://localhost:8081/fhir"
