@@ -34,7 +34,7 @@ import { getPatientName, getPatientCRUID } from '../utils/fhirHelpers';
 import { formatDate } from '../utils/formatters';
 
 export default function PatientsPage() {
-  const { patients, total, page, pageSize, loading, error, search, goToPage, setPageSize } =
+  const { patients, total, page, pageSize, loading, error, search, goToPage, changePageSize } =
     usePatients(getPreferences().defaultPageSize);
   const { notification, showNotification, dismissNotification } = useNotification();
 
@@ -66,7 +66,8 @@ export default function PatientsPage() {
 
   useEffect(() => {
     search({ active: true });
-  }, [search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadStats();
@@ -85,8 +86,7 @@ export default function PatientsPage() {
 
   const handleRowsPerPageChange = (newSize) => {
     setExpandedRow(null);
-    setPageSize(newSize);
-    search(activeFilters);
+    changePageSize(newSize, activeFilters);
   };
 
   const toggleExpand = (patientId) => {

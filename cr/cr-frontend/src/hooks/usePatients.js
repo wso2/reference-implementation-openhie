@@ -40,7 +40,15 @@ export function usePatients(initialPageSize = 20) {
     [fetchPage, pageSize]
   );
 
+  const changePageSize = useCallback(
+    (newSize, filters = {}) => {
+      setPageSize(newSize);
+      return fetchPage(1, newSize, filters);
+    },
+    [fetchPage]
+  );
+
   const totalPages = Math.ceil(total / pageSize);
 
-  return { patients, total, page, pageSize, totalPages, loading, error, search, goToPage, setPageSize: setPageSize };
+  return { patients, total, page, pageSize, totalPages, loading, error, search, goToPage, changePageSize };
 }

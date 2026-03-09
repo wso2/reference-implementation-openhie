@@ -20,7 +20,9 @@ npm run dev
 # App at http://localhost:5173
 ```
 
-In development (no Asgardeo env vars set), log in with **any** email and password — the simulated auth grants the `admin` role automatically.
+Copy `.env.example` to `.env` and set `VITE_AUTH_MODE` before starting — the app will not load without it.
+
+For local development, set `VITE_AUTH_MODE=simulated` and log in with **any** email and password — the simulated auth grants the `admin` role automatically.
 
 ## Build for Production
 
@@ -44,11 +46,12 @@ Uses ESLint with the config in `cr-frontend/eslint.config.js`.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_ASGARDEO_CLIENT_ID` | No | Asgardeo SPA client ID. Leave blank for simulated auth. |
-| `VITE_ASGARDEO_BASE_URL` | No | Asgardeo API base URL (e.g. `https://api.asgardeo.io/t/myorg`). Leave blank for simulated auth. |
+| `VITE_AUTH_MODE` | **Yes** | Authentication mode: `"oidc"` or `"simulated"`. App will not start without this. |
+| `VITE_OIDC_CLIENT_ID` | When `VITE_AUTH_MODE=oidc` | Client ID registered in your identity provider |
+| `VITE_OIDC_AUTHORITY` | When `VITE_AUTH_MODE=oidc` | OIDC issuer base URL (e.g. `https://api.asgardeo.io/t/myorg`) |
 
-Copy `cr-frontend/.env.example` to `cr-frontend/.env` and fill in values for production use.
+Copy `cr-frontend/.env.example` to `cr-frontend/.env` and fill in values.
 
 ## Authentication Modes
 
-See [Frontend Authentication](authentication) for detailed setup of both development (simulated) and production (Asgardeo) modes.
+See [Frontend Authentication](authentication) for detailed setup of both OIDC (production) and simulated (development) modes, including provider-specific examples.

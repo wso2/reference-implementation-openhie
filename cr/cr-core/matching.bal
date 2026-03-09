@@ -515,11 +515,11 @@ isolated function calculateScore(pdqm:PDQmPatient input, pdqm:PDQmPatient candid
         score += fields.gender.weight * sim;
     }
 
-    // --- Phone ---
+    // --- Phone (normalize before comparison to handle different formatting) ---
     string? inPhone = getTelecom(input, "phone");
     string? candPhone = getTelecom(candidate, "phone");
     if inPhone is string && candPhone is string {
-        decimal sim = compareField(inPhone, candPhone, fields.phone);
+        decimal sim = compareField(normalizePhone(inPhone), normalizePhone(candPhone), fields.phone);
         score += fields.phone.weight * sim;
     }
 

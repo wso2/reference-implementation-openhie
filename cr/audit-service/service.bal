@@ -7,8 +7,9 @@ import ballerina/cache;
 import ballerina/uuid;
 import ballerinax/health.fhir.r4.terminology;
 import ballerina/task;
+import ballerina/file;
 
-// in Choreo context, this is expected to be a path in a file mount 
+// in Choreo context, this is expected to be a path in a file mount
 configurable string auditLogPath = "/tmp/audit-logs/fhir-audit.log";
 // capacity of the cache used to store the failed audit events till they are retried
 configurable int cacheCapacity = 1000;
@@ -16,6 +17,10 @@ configurable int cacheCapacity = 1000;
 configurable string fhirServerName = "wso2fhirserver.com";
 // agent type of the audit event. This is used as the agent type in the FHIR audit event
 configurable string agentType = "humanuser";
+// rotate the log file when it exceeds this size in MB (0 disables rotation)
+configurable int maxLogFileSizeMB = 10;
+// maximum number of rotated log files to keep (.1 through .N)
+configurable int maxRotatedFiles = 5;
 
 // This creates a new cache with the advanced configuration.
 final cache:Cache cache = new ({
@@ -59,6 +64,97 @@ class RetryFailedAuditEvents {
     }
 }
 
+// Returns log files ordered newest to oldest: [fhir-audit.log, fhir-audit.log.1, ...]
+// Only includes files that exist on disk.
+isolated function getLogFiles() returns string[] {
+    string[] files = [];
+    boolean|file:Error exists = file:test(auditLogPath, file:EXISTS);
+    if exists is boolean && exists {
+        files.push(auditLogPath);
+    }
+    foreach int i in 1 ... maxRotatedFiles {
+        string rotated = auditLogPath + "." + i.toString();
+        boolean|file:Error rotatedExists = file:test(rotated, file:EXISTS);
+        if rotatedExists is boolean && rotatedExists {
+            files.push(rotated);
+        }
+    }
+    return files;
+}
+
+// Rotates log files: deletes oldest, shifts .N-1->.N, ..., .1->.2, current->.1
+isolated function rotateLogFile() {
+    string oldest = auditLogPath + "." + maxRotatedFiles.toString();
+    boolean|file:Error oldestExists = file:test(oldest, file:EXISTS);
+    if oldestExists is boolean && oldestExists {
+        do {
+            check file:remove(oldest);
+        } on fail error e {
+            log:printWarn("Failed to remove oldest rotated log file.", 'error = e, path = oldest);
+        }
+    }
+    int i = maxRotatedFiles - 1;
+    while i >= 1 {
+        string src = auditLogPath + "." + i.toString();
+        string dst = auditLogPath + "." + (i + 1).toString();
+        boolean|file:Error srcExists = file:test(src, file:EXISTS);
+        if srcExists is boolean && srcExists {
+            do {
+                check file:rename(src, dst);
+            } on fail error e {
+                log:printWarn("Failed to rename rotated log file.", 'error = e, src = src, dst = dst);
+            }
+        }
+        i -= 1;
+    }
+    boolean|file:Error currentExists = file:test(auditLogPath, file:EXISTS);
+    if currentExists is boolean && currentExists {
+        do {
+            check file:rename(auditLogPath, auditLogPath + ".1");
+        } on fail error e {
+            log:printWarn("Failed to rotate current log file.", 'error = e);
+        }
+    }
+    log:printInfo("Audit log rotated.", maxRotatedFiles = maxRotatedFiles);
+}
+
+// Returns the `recorded` timestamp of the first non-empty parseable line, or "" if none.
+isolated function getFirstTimestamp(string[] lines) returns string {
+    foreach string line in lines {
+        if line.trim().length() == 0 {
+            continue;
+        }
+        json|error parsed = line.fromJsonString();
+        if parsed is json {
+            json|error ts = parsed.recorded;
+            if ts is json {
+                return ts.toString();
+            }
+        }
+        break;
+    }
+    return "";
+}
+
+// Returns the `recorded` timestamp of the last non-empty parseable line, or "" if none.
+isolated function getLastTimestamp(string[] lines) returns string {
+    int i = lines.length() - 1;
+    while i >= 0 {
+        string line = lines[i];
+        if line.trim().length() > 0 {
+            json|error parsed = line.fromJsonString();
+            if parsed is json {
+                json|error ts = parsed.recorded;
+                if ts is json {
+                    return ts.toString();
+                }
+            }
+        }
+        i -= 1;
+    }
+    return "";
+}
+
 int port = 9093;
 
 service / on new http:Listener(port) {
@@ -74,17 +170,66 @@ service / on new http:Listener(port) {
     isolated resource function get audits(http:Request req, string? action, string? subtype,
             string? since, string? before, int 'limit = 50, int offset = 0, string sortOrder = "desc")
             returns json|http:STATUS_INTERNAL_SERVER_ERROR {
-        json[] auditEvents = [];
-        do {
-            // Check if the log file exists by attempting to read it
-            string[] lines = check io:fileReadLines(auditLogPath);
-            foreach string line in lines {
+
+        int effectiveLimit = 'limit < 1 ? 50 : 'limit;
+        int startIdx = offset < 0 ? 0 : offset;
+        int needed = startIdx + effectiveLimit;
+
+        // Get log files: index 0 = newest. For asc, reverse to oldest-first.
+        string[] logFiles = getLogFiles();
+        if sortOrder == "asc" {
+            logFiles = logFiles.reverse();
+        }
+
+        json[] allMatching = [];
+
+        foreach string logFile in logFiles {
+            // Early exit: we already have enough matching records
+            if allMatching.length() >= needed {
+                break;
+            }
+
+            string[]|io:Error linesResult = io:fileReadLines(logFile);
+            if linesResult is io:Error {
+                string errMsg = linesResult.message();
+                if errMsg.includes("no such file") || errMsg.includes("does not exist") || errMsg.includes("cannot find") || errMsg.includes("FileNotFound") {
+                    continue;
+                }
+                log:printError("Failed to read audit log file.", 'error = linesResult, path = logFile);
+                return http:STATUS_INTERNAL_SERVER_ERROR;
+            }
+            string[] lines = linesResult;
+
+            // Skip this file entirely if its time range doesn't overlap the query window
+            if since is string || before is string {
+                string fileStart = getFirstTimestamp(lines);
+                string fileEnd = getLastTimestamp(lines);
+                if fileStart != "" && before is string && fileStart > before {
+                    // Entire file is newer than 'before' — skip
+                    continue;
+                }
+                if fileEnd != "" && since is string && fileEnd < since {
+                    // Entire file is older than 'since' — for desc, no older file can help either
+                    if sortOrder != "asc" {
+                        break;
+                    }
+                    continue;
+                }
+            }
+
+            // For desc: process lines newest-first within this file
+            string[] orderedLines = sortOrder == "asc" ? lines : lines.reverse();
+
+            foreach string line in orderedLines {
+                if allMatching.length() >= needed {
+                    break;
+                }
                 if line.trim().length() == 0 {
                     continue;
                 }
                 json|error parsed = line.fromJsonString();
                 if parsed is json {
-                    // Skip framework-generated audit events (source: wso2fhirserver.com)
+                    // Skip framework-generated audit events
                     json|error sourceObserver = parsed.'source.observer.display;
                     if sourceObserver is json && sourceObserver.toString() == fhirServerName {
                         continue;
@@ -101,11 +246,9 @@ service / on new http:Listener(port) {
                     if include && subtype is string {
                         json|error subtypeArr = parsed.subtype;
                         if subtypeArr is json {
-                            string subtypeStr = subtypeArr.toString();
-                            include = subtypeStr.includes(subtype);
+                            include = subtypeArr.toString().includes(subtype);
                         }
                     }
-                    // Filter by timestamp range
                     if include && (since is string || before is string) {
                         json|error recordedTime = parsed.recorded;
                         if recordedTime is json {
@@ -119,41 +262,17 @@ service / on new http:Listener(port) {
                         }
                     }
                     if include {
-                        auditEvents.push(parsed);
+                        allMatching.push(parsed);
                     }
                 }
             }
-        } on fail error e {
-            // If the file doesn't exist yet, return empty array
-            string errMsg = e.message();
-            if errMsg.includes("no such file") || errMsg.includes("does not exist") || errMsg.includes("cannot find") || errMsg.includes("FileNotFound") {
-                log:printDebug("Audit log file not found yet, returning empty array.");
-                return auditEvents;
-            }
-            log:printError("Failed to read audit log file.", 'error = e);
-            return http:STATUS_INTERNAL_SERVER_ERROR;
         }
 
-        // Sort based on sortOrder (file is chronological, so reverse for desc)
-        json[] sorted = [];
-        if sortOrder == "asc" {
-            sorted = auditEvents;
-        } else {
-            int i = auditEvents.length() - 1;
-            while i >= 0 {
-                sorted.push(auditEvents[i]);
-                i -= 1;
-            }
-        }
-
-        // Apply offset and limit for pagination
+        // Apply offset/limit — records are already in the correct sort order
         json[] paginated = [];
-        int startIdx = offset < 0 ? 0 : offset;
-        int effectiveLimit = 'limit < 1 ? 50 : 'limit;
-        int endIdx = startIdx + effectiveLimit;
         int idx = startIdx;
-        while idx < endIdx && idx < sorted.length() {
-            paginated.push(sorted[idx]);
+        while idx < needed && idx < allMatching.length() {
+            paginated.push(allMatching[idx]);
             idx += 1;
         }
         return paginated;
@@ -163,6 +282,13 @@ service / on new http:Listener(port) {
         international401:AuditEvent auditEvent = audit;
         if !(auditEvent.id is string) || auditEvent.id == "" {
             auditEvent.id = uuid:createType1AsString();
+        }
+        // Rotate log file if it exceeds the configured size limit
+        if maxLogFileSizeMB > 0 {
+            file:MetaData|file:Error meta = file:getMetaData(auditLogPath);
+            if meta is file:MetaData && meta.size > maxLogFileSizeMB * 1024 * 1024 {
+                rotateLogFile();
+            }
         }
         io:Error? result = io:fileWriteLines(auditLogPath, [auditEvent.toJsonString()], option = io:APPEND);
         if result is io:Error {

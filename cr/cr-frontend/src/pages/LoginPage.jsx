@@ -11,10 +11,10 @@ import {
 } from '@wso2/oxygen-ui';
 import { Database, LogIn } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { isAsgardeoEnabled } from '../config/auth';
+import { authMode } from '../config/auth';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
@@ -26,8 +26,8 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, from, navigate]);
 
-  if (isAsgardeoEnabled) {
-    return <AsgardeoLoginPage login={login} isLoading={isLoading} />;
+  if (authMode === 'oidc') {
+    return <AsgardeoLoginPage login={login} isLoading={isLoading} error={error} />;
   }
   return <SimulatedLoginPage login={login} from={from} />;
 }
@@ -35,7 +35,7 @@ export default function LoginPage() {
 // ---------------------------------------------------------------------------
 // Asgardeo login — single button that redirects to Asgardeo hosted login
 // ---------------------------------------------------------------------------
-function AsgardeoLoginPage({ login, isLoading }) {
+function AsgardeoLoginPage({ login, isLoading, error }) {
   return (
     <Box
       sx={{
@@ -75,10 +75,16 @@ function AsgardeoLoginPage({ login, isLoading }) {
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ mb: 4 }}
+          sx={{ mb: error ? 2 : 4 }}
         >
           Sign in to access the MPI Administration Dashboard
         </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>
+            {error}
+          </Alert>
+        )}
 
         <Button
           variant="contained"

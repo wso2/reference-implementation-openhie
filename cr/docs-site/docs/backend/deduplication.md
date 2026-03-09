@@ -9,25 +9,33 @@ The deduplication pipeline identifies patient records that likely represent the 
 
 ## Starting a Dedup Run
 
+The deduplication API follows the **FHIR async pattern** (same as `$export`): the start call returns `202 Accepted` with a `Content-Location` header pointing to the status URL. The client polls that URL until it receives `200 OK` with the full results.
+
 ```bash
-# Start the dedup job (async — returns immediately)
-curl -H "Authorization: Bearer $TOKEN" \
+# 1. Start the dedup job
+curl -v -H "Authorization: Bearer $TOKEN" \
   http://localhost:9090/fhir/r4/Patient/dedupstart
 
-# Response: { "jobId": "...", "status": "pending" }
+# Response: HTTP 202 Accepted
+# Content-Location: /Patient/dedupstatus
+# (no body)
 
-# Poll until done
+# 2. Poll the Content-Location URL until done
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:9090/fhir/r4/Patient/dedupstatus
 
-# Response: { "status": "running" | "completed" | "failed", ... }
+# While running → HTTP 202
+# { "jobId": "...", "status": "running", "startedAt": "..." }
+# Headers: X-Progress: running, Retry-After: 2
 
-# Fetch results
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:9090/fhir/r4/Patient/dedup
+# When complete → HTTP 200 (full results inline)
+# { "totalPatients": 5432, "totalGroups": 12, "groups": [...], ... }
+
+# On failure → HTTP 500
+# OperationOutcome with error details
 ```
 
-Returns `409 Conflict` if a job is already running.
+If a job is already running, `dedupstart` still returns `202 Accepted` with the same `Content-Location` — the client simply starts polling the existing job.
 
 ## Pipeline Flowchart
 
@@ -41,14 +49,21 @@ Admin calls GET /Patient/dedupstart
             │       │
          Yes│       │No
             ▼       ▼
-      409 Conflict  Create DedupJob (status: pending)
-                    │
-                    ▼
+    202 + Content-  Create DedupJob (status: pending)
+    Location header │
+    (client polls)  ▼
           ┌─────────────────────┐
           │ Launch background   │
           │ strand (async)      │
           │ status → "running"  │
           └────────┬────────────┘
+                   │
+          ┌────────▼────────────┐
+          │ Client polls        │
+          │ /Patient/dedupstatus│
+          │ → 202 while running │
+          │ → 200 when done     │
+          └─────────────────────┘
 ```
 
 ### Step 1 — Refresh Blocking Keys
@@ -127,7 +142,7 @@ Returns `DedupResult` with `totalPatients`, `totalGroups`, `threshold`, `timesta
 
 ## Post-Dedup Admin Review
 
-After viewing results via `GET /Patient/dedup`, admins have three options:
+After the `200 OK` response from `GET /Patient/dedupstatus` returns the full results, admins have three options:
 
 ### Merge (ITI-104)
 

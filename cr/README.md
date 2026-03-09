@@ -19,7 +19,7 @@ A standards-based **Master Patient Index (MPI)** implementation for health infor
 - **Match Rejection**: Admin can reject false-positive matches; rejected pairs are excluded from future dedup runs
 - **Audit Trail**: FHIR AuditEvent logging for all patient operations (IHE ATNA ITI-20)
 - **Blocking Strategy**: Pre-computed indexed keys reduce candidate sets from millions to ~10-500 per query
-- **Authentication**: Asgardeo (WSO2 IdP) in production, simulated auth in development
+- **Authentication**: Any OIDC-compliant provider (Asgardeo, Keycloak, Auth0, Okta, Azure AD, ...) in production, simulated auth in development
 
 ## Repository Structure
 
@@ -113,9 +113,9 @@ npm run dev
 # App at http://localhost:5173
 ```
 
-In development mode (no Asgardeo env vars set), login with any email/password combination — all users receive the `admin` role.
+Copy `cr-frontend/.env.example` to `cr-frontend/.env` and set `VITE_AUTH_MODE` before starting. For development, set `VITE_AUTH_MODE=simulated` and login with any email/password — all users receive the `admin` role.
 
-See [cr-frontend/README.md](cr-frontend/README.md) for Asgardeo setup and frontend details.
+See [cr-frontend/README.md](cr-frontend/README.md) for OIDC setup and frontend details.
 
 ---
 
@@ -422,71 +422,81 @@ Note: This does **not** affect `$match` (ITI-119) — rejected patients still ap
 
 ## Authentication
 
-The frontend supports two authentication modes: **Asgardeo** (production) and **Simulated** (development). The mode is selected automatically based on environment variables.
+The frontend supports two authentication modes: **OIDC** (production) and **Simulated** (development). The mode is explicitly set in `cr-frontend/.env` — the app will not start without it.
 
 ### Authentication Modes
 
-#### Asgardeo (WSO2 Identity Provider)
+#### OIDC (Any OIDC-Compliant Provider)
 
-When `VITE_ASGARDEO_CLIENT_ID` and `VITE_ASGARDEO_BASE_URL` are set in `cr-frontend/.env`, the app uses [WSO2 Asgardeo](https://wso2.com/asgardeo/) for authentication via OpenID Connect.
+When `VITE_AUTH_MODE=oidc` is set along with `VITE_OIDC_CLIENT_ID` and `VITE_OIDC_AUTHORITY`, the app uses any standard OIDC identity provider (Asgardeo, Keycloak, Auth0, Okta, Azure AD, etc.) for authentication.
 
 **Flow:**
 1. User visits the app → `ProtectedRoute` redirects to `/login`
-2. User clicks "Sign in with Asgardeo" → redirected to Asgardeo hosted login page
-3. After successful login → Asgardeo redirects back to the app origin
-4. The `@asgardeo/react` SDK reads the session and populates user info (SCIM2 profile)
+2. User clicks "Sign in" → redirected to the IdP hosted login page
+3. After successful login → IdP redirects back to the app origin
+4. The `react-oidc-context` library reads the session and populates user info from standard OIDC claims
 5. `AuthContext` creates a **bridge token** (base64-encoded `{ sub, role, exp }`) for backend compatibility
 6. Token and user info are synced to `localStorage` for the API client to use
-7. On sign-out → Asgardeo session is cleared and user is redirected to the app origin
+7. On sign-out → IdP session is cleared and user is redirected to the app origin
 
 #### Simulated (Development Mode)
 
-When Asgardeo env vars are not set, the app uses a simulated auth provider. Any email/password combination is accepted, and the user is assigned the `admin` role.
+When `VITE_AUTH_MODE=simulated` is set, the app uses a local email/password form. Any combination is accepted, and the user is assigned the `admin` role.
 
 ### Setup for Implementers
 
-1. Create a free account at [Asgardeo Console](https://console.asgardeo.io)
-2. Create a **Single Page Application** in your Asgardeo organization
-3. Configure the application:
+1. Register a **Single Page Application** (SPA) in your identity provider
+2. Configure the application:
    - **Authorized Redirect URL**: `http://localhost:5173` (or your production URL)
-   - **Allowed Logout URL**: `http://localhost:5173` (must match `afterSignOutUrl`)
-4. Copy `cr-frontend/.env.example` to `cr-frontend/.env` and fill in:
+   - **Allowed Logout URL**: `http://localhost:5173`
+3. Copy `cr-frontend/.env.example` to `cr-frontend/.env` and fill in:
    ```env
-   VITE_ASGARDEO_CLIENT_ID=your-client-id
-   VITE_ASGARDEO_BASE_URL=https://api.asgardeo.io/t/your-org-name
+   VITE_AUTH_MODE=oidc
+   VITE_OIDC_CLIENT_ID=your-client-id
+   VITE_OIDC_AUTHORITY=https://your-oidc-provider-base-url
    ```
-5. (Optional) For role-based access control:
-   - Create groups `admin` and `viewer` in Asgardeo
-   - Assign users to appropriate groups
-   - Enable the `groups` claim in the application's **User Attributes**
+
+Provider-specific `VITE_OIDC_AUTHORITY` examples:
+
+| Provider | Authority URL |
+|----------|--------------|
+| Asgardeo | `https://api.asgardeo.io/t/your-org-name` |
+| Keycloak | `https://your-keycloak-host/realms/your-realm` |
+| Auth0 | `https://your-tenant.auth0.com` |
+| Okta | `https://your-org.okta.com/oauth2/default` |
+| Azure AD | `https://login.microsoftonline.com/your-tenant-id/v2.0` |
+
+4. (Optional) For role-based access control:
+   - Configure your IdP to include a `groups` claim in the ID token
+   - Create groups `admin` and `viewer` and assign users accordingly
 
 ### Role-Based Access Control
 
 | Role   | Chip Label | Source                                              |
 |--------|------------|-----------------------------------------------------|
-| admin  | MPI Admin  | User belongs to the `admin` group in Asgardeo       |
+| admin  | MPI Admin  | User belongs to the `admin` group in the IdP        |
 | viewer | MPI Viewer | Default when no groups are configured or user is not in `admin` group |
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `cr-frontend/src/config/auth.js` | Asgardeo SDK configuration and `isAsgardeoEnabled` flag |
-| `cr-frontend/src/auth/AuthContext.jsx` | Dual-mode auth provider with bridge token creation |
+| `cr-frontend/src/config/auth.js` | Auth mode validation; `authMode` and `authConfigError` exports |
+| `cr-frontend/src/auth/AuthContext.jsx` | Dual-mode auth provider (OIDC / simulated) with bridge token creation |
 | `cr-frontend/src/auth/ProtectedRoute.jsx` | Route guard that redirects unauthenticated users to `/login` |
 | `cr-frontend/src/api/client.js` | API client that attaches `Authorization` and `X-User-Id` headers |
-| `cr-frontend/src/pages/LoginPage.jsx` | Login UI (Asgardeo button or simulated form) |
+| `cr-frontend/src/pages/LoginPage.jsx` | Login UI (OIDC redirect button or simulated form) |
 | `cr-frontend/src/pages/ProfileSettingsPage.jsx` | Profile info, preferences, and session management (`/settings`) |
 | `cr-frontend/src/hooks/useUserPreferences.js` | localStorage-backed preferences (page size, date format, audit auto-refresh) |
-| `cr-frontend/.env.example` | Template for Asgardeo environment variables |
+| `cr-frontend/.env.example` | Template for environment variables |
 
 ### Architecture Diagram
 
 ```
-┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Browser    │────→│  Asgardeo IdP    │────→│  Asgardeo       │
-│  (React App) │←────│  (OIDC / SCIM2)  │←────│  Console        │
-└──────┬───────┘     └──────────────────┘     └─────────────────┘
+┌──────────────┐     ┌──────────────────┐
+│   Browser    │────→│  OIDC IdP        │
+│  (React App) │←────│  (any provider)  │
+└──────┬───────┘     └──────────────────┘
        │
        │  Bridge Token (base64 JSON)
        │  + X-User-Id header
@@ -498,7 +508,7 @@ When Asgardeo env vars are not set, the app uses a simulated auth provider. Any 
 └──────────────┘     └──────────────────┘
 ```
 
-> **Phase 2 (planned):** The backend will validate real Asgardeo JWTs via the JWKS endpoint, replacing the bridge token approach.
+> **Phase 2 (planned):** The backend will validate real OIDC JWTs via the JWKS endpoint, replacing the bridge token approach.
 
 ## Profile & Settings (`/settings`)
 

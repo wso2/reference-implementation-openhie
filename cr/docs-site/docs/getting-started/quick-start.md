@@ -38,10 +38,13 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-In **development mode** (no Asgardeo env vars set), enter any email and password — all users receive the `admin` role automatically.
+Before logging in, copy `cr-frontend/.env.example` to `cr-frontend/.env` and set `VITE_AUTH_MODE`.
+
+- **Development**: set `VITE_AUTH_MODE=simulated` and enter any email and password — all users receive the `admin` role automatically.
+- **Production**: set `VITE_AUTH_MODE=oidc` and fill in `VITE_OIDC_CLIENT_ID` + `VITE_OIDC_AUTHORITY`.
 
 :::tip Production authentication
-See [Frontend Authentication](../frontend/authentication) to configure WSO2 Asgardeo for production use.
+See [Frontend Authentication](../frontend/authentication) for OIDC setup with any identity provider.
 :::
 
 ## Verify the Backend

@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { startDedupJob, getDedupJobStatus, getLatestDedupResults, rejectDedupMatch } from '../api/matchService';
+import { startDedupJob, pollDedupStatus, rejectDedupMatch } from '../api/matchService';
 import { resolvePatient } from '../api/patientService';
 
 const SESSION_KEY = 'matchGroups';
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const LAST_RUN_KEY = 'dedupLastRunTime';
 
 function loadFromSession() {
   try {
@@ -21,92 +20,69 @@ export function useMatchGroups() {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(matchGroups));
   }, [matchGroups]);
 
-  const [loading, setLoading] = useState(false);
   const [merging, setMerging] = useState(false);
-  const [error, setError] = useState(null);
-  const [dedupStatus, setDedupStatus] = useState(null); // 'pending' | 'running' | 'completed' | 'failed'
+  const [isStarting, setIsStarting] = useState(false);     // dedupstart request in flight
+  const [isRetrieving, setIsRetrieving] = useState(false); // dedupstatus request in flight
+  const [isJobRunning, setIsJobRunning] = useState(false); // server confirmed job is running (202)
+  const [startError, setStartError] = useState(null);
+  const [retrieveError, setRetrieveError] = useState(null);
+  const [mergeError, setMergeError] = useState(null);
+  const [lastRunTime, setLastRunTime] = useState(
+    () => sessionStorage.getItem(LAST_RUN_KEY) || null
+  );
 
   const mountedRef = useRef(true);
-  const pollTimerRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-    };
+    return () => { mountedRef.current = false; };
   }, []);
 
-  const pollJob = useCallback((startTime) => {
-    if (!mountedRef.current) return;
-
-    // Timeout check
-    if (Date.now() - startTime > MAX_POLL_DURATION_MS) {
-      setError('Deduplication is taking too long. Please try again later.');
-      setLoading(false);
-      setDedupStatus(null);
-      return;
-    }
-
-    pollTimerRef.current = setTimeout(async () => {
-      if (!mountedRef.current) return;
-      try {
-        const status = await getDedupJobStatus();
-        if (!mountedRef.current) return;
-
-        setDedupStatus(status.status);
-
-        if (status.status === 'completed') {
-          // Fetch full results from the dedup endpoint
-          const results = await getLatestDedupResults();
-          if (!mountedRef.current) return;
-          setMatchGroups(results?.groups || []);
-          setLoading(false);
-          setDedupStatus(null);
-          return;
-        }
-        if (status.status === 'failed') {
-          setError(status.error || 'Deduplication failed');
-          setLoading(false);
-          setDedupStatus(null);
-          return;
-        }
-        // Still running — poll again
-        pollJob(startTime);
-      } catch (err) {
-        if (!mountedRef.current) return;
-        // 404 means no jobs found
-        if (err.status === 404) {
-          setError('Dedup job was lost (server may have restarted). Please run again.');
-        } else {
-          setError(err.message);
-        }
-        setLoading(false);
-        setDedupStatus(null);
-      }
-    }, POLL_INTERVAL_MS);
-  }, []);
-
+  // Fire-and-forget: start the dedup job, return immediately. No polling.
   const runDedup = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setDedupStatus('pending');
+    setIsStarting(true);
+    setStartError(null);
     try {
-      await startDedupJob();
-      setDedupStatus('running');
-      pollJob(Date.now());
+      await startDedupJob(); // 202 for both fresh start and already-running
+      setIsJobRunning(true);
     } catch (err) {
-      // 409 Conflict — a job is already running, resume polling it
-      if (err.status === 409) {
-        setDedupStatus('running');
-        pollJob(Date.now());
-      } else {
-        setError(err.message);
-        setLoading(false);
-        setDedupStatus(null);
-      }
+      setStartError(err.message);
+    } finally {
+      if (mountedRef.current) setIsStarting(false);
     }
-  }, [pollJob]);
+  }, []);
+
+  // One-shot fetch: check dedupstatus once, load results if ready.
+  const retrieveResults = useCallback(async () => {
+    setIsRetrieving(true);
+    setRetrieveError(null);
+    try {
+      const { done, result } = await pollDedupStatus('/Patient/dedupstatus');
+      if (!mountedRef.current) return;
+      if (done) {
+        setMatchGroups(result?.groups || []);
+        setIsJobRunning(false);
+        const runTime = result?.timestamp || new Date().toISOString();
+        setLastRunTime(runTime);
+        sessionStorage.setItem(LAST_RUN_KEY, runTime);
+      } else {
+        // 202 — job still running on server
+        setIsJobRunning(true);
+        setRetrieveError('Deduplication is still in progress. Please try again later.');
+      }
+    } catch (err) {
+      if (!mountedRef.current) return;
+      if (err.status === 404) {
+        setRetrieveError('No deduplication data found. Run the process first.');
+      } else if (err.status === 500) {
+        setRetrieveError('The last deduplication run failed on the server. Run it again.');
+      } else {
+        setRetrieveError(err.message);
+      }
+    } finally {
+      if (mountedRef.current) setIsRetrieving(false);
+    }
+  }, []);
 
   /**
    * Approve a match group: mark subsumed patients as inactive via ITI-104 Resolve Duplicate.
@@ -117,7 +93,7 @@ export function useMatchGroups() {
     if (!group || group.patients.length < 2) return;
 
     setMerging(true);
-    setError(null);
+    setMergeError(null);
 
     try {
       const survivingPatient = group.patients[0];
@@ -149,7 +125,7 @@ export function useMatchGroups() {
         )
       );
     } catch (err) {
-      setError(err.message);
+      setMergeError(err.message);
     } finally {
       setMerging(false);
     }
@@ -159,7 +135,7 @@ export function useMatchGroups() {
     const group = matchGroups.find((g) => g.id === groupId);
     if (!group || group.patients.length < 2) return;
 
-    setError(null);
+    setMergeError(null);
 
     try {
       // Call backend for each pair in the group to persist exclusion codes
@@ -188,7 +164,7 @@ export function useMatchGroups() {
         )
       );
     } catch (err) {
-      setError(err.message);
+      setMergeError(err.message);
     }
   }, [matchGroups]);
 
@@ -224,7 +200,7 @@ export function useMatchGroups() {
     if (patientsToMerge.length < 2) return;
 
     setMerging(true);
-    setError(null);
+    setMergeError(null);
 
     try {
       const survivingPatient = patientsToMerge[0];
@@ -245,15 +221,18 @@ export function useMatchGroups() {
       const mergedIds = patientsToMerge.map((p) => p.id);
       removeFromGroup(groupId, mergedIds);
     } catch (err) {
-      setError(err.message);
+      setMergeError(err.message);
     } finally {
       setMerging(false);
     }
   }, [removeFromGroup]);
 
   return {
-    matchGroups, loading, merging, error,
-    dedupStatus,
-    runDedup, approveGroup, rejectGroup, removeFromGroup, mergeSubset,
+    matchGroups, merging,
+    isStarting, isRetrieving, isJobRunning,
+    startError, retrieveError, mergeError,
+    lastRunTime,
+    runDedup, retrieveResults,
+    approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   };
 }

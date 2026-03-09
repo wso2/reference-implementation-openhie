@@ -1,4 +1,4 @@
-import { fetchApi } from './client.js';
+import { fetchApi, fetchApiResponse, ApiError } from './client.js';
 
 function classifyScore(score) {
   if (score >= 0.95) return 'certain';
@@ -34,16 +34,32 @@ export async function runPatientMatch(
   }));
 }
 
+// Starts a dedup job. Returns { contentLocation } from the 202 Content-Location header.
+// Both a fresh start and an already-running job return 202 (FHIR async pattern).
 export async function startDedupJob() {
-  return fetchApi('/Patient/dedupstart');
+  const response = await fetchApiResponse('/Patient/dedupstart');
+  if (response.status !== 202) {
+    const body = await response.json().catch(() => null);
+    throw new ApiError(response.status, response.statusText, body);
+  }
+  const contentLocation = response.headers.get('Content-Location');
+  return { contentLocation };
 }
 
-export async function getDedupJobStatus() {
-  return fetchApi('/Patient/dedupstatus');
-}
-
-export async function getLatestDedupResults() {
-  return fetchApi('/Patient/dedup');
+// Polls the Content-Location URL from dedupstart.
+// Returns { done: false } while running (202), { done: true, result } when complete (200).
+// Throws on failure (5xx).
+export async function pollDedupStatus(contentLocation) {
+  const response = await fetchApiResponse(contentLocation);
+  if (response.status === 202) {
+    return { done: false };
+  }
+  if (response.status === 200) {
+    const result = await response.json();
+    return { done: true, result };
+  }
+  const body = await response.json().catch(() => null);
+  throw new ApiError(response.status, response.statusText, body);
 }
 
 export async function rejectDedupMatch(patientId1, patientId2) {

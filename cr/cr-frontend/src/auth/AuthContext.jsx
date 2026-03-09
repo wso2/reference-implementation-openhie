@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { useAsgardeo } from '@asgardeo/react';
-import { isAsgardeoEnabled } from '../config/auth';
+import { useAuth as useOidcAuth } from 'react-oidc-context';
+import { authMode, groupsClaim } from '../config/auth';
 
 const AuthContext = createContext(null);
 
 /**
  * Creates a bridge token in the format the backend expects (base64-encoded JSON).
- * Phase 2 will migrate the backend to validate real Asgardeo JWTs directly.
+ * Phase 2 will migrate the backend to validate real OIDC JWTs directly.
  */
 function createBridgeToken(email, role) {
   return btoa(
@@ -15,7 +15,7 @@ function createBridgeToken(email, role) {
 }
 
 /**
- * Maps Asgardeo groups to application roles.
+ * Maps OIDC groups claim to application roles.
  * Users in the "admin" group get the admin role; everyone else is a viewer.
  */
 function mapGroupsToRole(groups) {
@@ -23,7 +23,7 @@ function mapGroupsToRole(groups) {
   return groups.some((g) => g.toLowerCase() === 'admin') ? 'admin' : 'viewer';
 }
 
-/** Safely extract a string value (Asgardeo may return objects or arrays). */
+/** Safely extract a string value (OIDC claims may return objects or arrays). */
 function safeStr(val) {
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) return val[0] || '';
@@ -43,36 +43,53 @@ function getInitials(name, email) {
 }
 
 // ---------------------------------------------------------------------------
-// Asgardeo-backed AuthProvider
+// OIDC-backed AuthProvider (works with any OIDC-compliant provider)
 // ---------------------------------------------------------------------------
-function AsgardeoAuthProvider({ children }) {
-  const asgardeo = useAsgardeo();
+function OidcAuthProvider({ children }) {
+  const oidc = useOidcAuth();
+  const [loginError, setLoginError] = useState(null);
 
   const user = useMemo(() => {
-    if (!asgardeo.isSignedIn || !asgardeo.user) return null;
+    if (!oidc.isAuthenticated || !oidc.user) return null;
 
-    const u = asgardeo.user;
+    const p = oidc.user.profile;
 
-    // Asgardeo SCIM2 user object fields:
-    //   userName: "user@org.com"
-    //   name: { givenName: "...", familyName: "..." }
-    //   displayName, email, groups — may or may not be present
-    const email = safeStr(u.email) || safeStr(u.userName) || safeStr(u.username) || safeStr(u.sub) || '';
-    const givenName = safeStr(u.givenName) || safeStr(u.name?.givenName);
-    const familyName = safeStr(u.familyName) || safeStr(u.name?.familyName);
-    const displayName = safeStr(u.displayName);
-    const name = displayName || [givenName, familyName].filter(Boolean).join(' ') || '';
-    const groups = Array.isArray(u.groups) ? u.groups : [];
+    // Standard OIDC claims + common provider-specific alternatives:
+    //   email, preferred_username, username (Asgardeo), upn (Azure AD)
+    const email = safeStr(p.email)
+      || safeStr(p.preferred_username)
+      || safeStr(p.username)
+      || safeStr(p.upn)
+      || safeStr(p.sub)
+      || '';
+    const givenName = safeStr(p.given_name);
+    const familyName = safeStr(p.family_name);
+    const displayName = safeStr(p.name);
+    const name = displayName
+      || [givenName, familyName].filter(Boolean).join(' ')
+      || safeStr(p.username)
+      || '';
+    const groups = Array.isArray(p[groupsClaim]) ? p[groupsClaim] : [];
     const role = mapGroupsToRole(groups);
+
+    // Warn when the provider didn't return usable profile claims
+    if (!p.email && !p.preferred_username && !p.username && !p.name) {
+      console.warn(
+        '[AuthContext] OIDC profile is missing email/name claims. '
+        + 'Ensure your IdP application is configured to share email and profile '
+        + 'user attributes (e.g. Asgardeo → Application → User Attributes).\n'
+        + 'Available claims:', Object.keys(p),
+      );
+    }
 
     return {
       email,
-      name: name || (typeof email === 'string' ? email.split('@')[0] : ''),
+      name: name || (email.includes('@') ? email.split('@')[0] : ''),
       initials: getInitials(name, email),
       role,
       groups,
     };
-  }, [asgardeo.isSignedIn, asgardeo.user]);
+  }, [oidc.isAuthenticated, oidc.user]);
 
   const token = useMemo(() => {
     if (!user) return null;
@@ -91,31 +108,37 @@ function AsgardeoAuthProvider({ children }) {
     }
   }, [token, user]);
 
-  const login = useCallback(() => {
-    asgardeo.signIn();
-  }, [asgardeo]);
+  const login = useCallback(async () => {
+    setLoginError(null);
+    try {
+      await oidc.signinRedirect();
+    } catch (err) {
+      setLoginError(err?.message || 'Sign-in failed. Check your OIDC configuration.');
+    }
+  }, [oidc]);
 
   const logout = useCallback(() => {
-    asgardeo.signOut();
-  }, [asgardeo]);
+    oidc.signoutRedirect();
+  }, [oidc]);
 
   const value = useMemo(
     () => ({
       user,
       token,
-      isAuthenticated: asgardeo.isSignedIn,
-      isLoading: asgardeo.isLoading,
+      isAuthenticated: oidc.isAuthenticated,
+      isLoading: oidc.isLoading,
+      error: oidc.error?.message || loginError,
       login,
       logout,
     }),
-    [user, token, asgardeo.isSignedIn, asgardeo.isLoading, login, logout]
+    [user, token, oidc.isAuthenticated, oidc.isLoading, oidc.error, loginError, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // ---------------------------------------------------------------------------
-// Simulated AuthProvider (fallback for dev without Asgardeo)
+// Simulated AuthProvider (dev mode — requires VITE_AUTH_MODE=simulated)
 // ---------------------------------------------------------------------------
 function SimulatedAuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -153,6 +176,7 @@ function SimulatedAuthProvider({ children }) {
       token,
       isAuthenticated: !!token,
       isLoading: false,
+      error: null,
       login,
       logout,
     }),
@@ -166,8 +190,8 @@ function SimulatedAuthProvider({ children }) {
 // Public API
 // ---------------------------------------------------------------------------
 export function AuthProvider({ children }) {
-  if (isAsgardeoEnabled) {
-    return <AsgardeoAuthProvider>{children}</AsgardeoAuthProvider>;
+  if (authMode === 'oidc') {
+    return <OidcAuthProvider>{children}</OidcAuthProvider>;
   }
   return <SimulatedAuthProvider>{children}</SimulatedAuthProvider>;
 }

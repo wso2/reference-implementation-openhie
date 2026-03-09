@@ -108,7 +108,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-### `GET /Patient/{id}` — Read Patient (ITI-78)
+### `GET /Patient/{id}` 
 
 Retrieve a single patient by their CRUID.
 
@@ -180,52 +180,44 @@ curl -X POST http://localhost:9090/fhir/r4/Patient/\$match \
 
 ### `GET /Patient/dedupstart` — Start Deduplication
 
-Launch an async deduplication job.
+Launch an async deduplication job. Follows the **FHIR async pattern** (same as `$export`).
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
+curl -v -H "Authorization: Bearer $TOKEN" \
   http://localhost:9090/fhir/r4/Patient/dedupstart
 ```
 
-**Returns:**
-```json
-{ "jobId": "uuid", "status": "pending" }
+**Returns:** `202 Accepted` with `Content-Location` header pointing to the status URL.
+
+```
+HTTP/1.1 202 Accepted
+Content-Location: /Patient/dedupstatus
 ```
 
-Returns `409 Conflict` if a dedup job is already running.
+If a job is already running, still returns `202 Accepted` with the same `Content-Location` — poll the status URL to follow the existing job.
 
 ---
 
 ### `GET /Patient/dedupstatus` — Poll Deduplication Status
 
-Check the status of the current or most recent dedup job.
+Poll the status of the current or most recent dedup job (use the `Content-Location` URL from `dedupstart`).
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
+curl -v -H "Authorization: Bearer $TOKEN" \
   http://localhost:9090/fhir/r4/Patient/dedupstatus
 ```
 
-**Returns:**
+**While running — `202 Accepted`:**
+```
+HTTP/1.1 202 Accepted
+X-Progress: running
+Retry-After: 2
+```
 ```json
-{ "status": "running" }
-// or
-{ "status": "completed", "totalGroups": 12, "totalPatients": 5432, "completedAt": "..." }
+{ "jobId": "uuid", "status": "running", "startedAt": "2025-01-15T10:28:00Z" }
 ```
 
-Possible statuses: `pending`, `running`, `completed`, `failed`.
-
----
-
-### `GET /Patient/dedup` — Get Deduplication Results
-
-Retrieve the full results from the most recent completed dedup job.
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:9090/fhir/r4/Patient/dedup
-```
-
-**Returns:** `DedupResult` object:
+**When complete — `200 OK` (full results inline):**
 ```json
 {
   "totalPatients": 5432,
@@ -236,7 +228,7 @@ curl -H "Authorization: Bearer $TOKEN" \
     {
       "patients": [...],
       "score": 0.82,
-      "grade": "probable",
+      "matchGrade": "probable",
       "matchedFields": ["family", "birthDate", "gender"],
       "unmatchedFields": ["phone"]
     }
@@ -244,7 +236,9 @@ curl -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
----
+**On failure — `500 Internal Server Error`:** OperationOutcome with error details.
+
+**Not found — `404 Not Found`:** No dedup job has ever run.
 
 ### `GET /Patient/dedupreject` — Reject Dedup Match
 

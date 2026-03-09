@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Alert, Box, Button, CircularProgress, Typography } from '@wso2/oxygen-ui';
-import { Play, AlertCircle } from 'lucide-react';
+import { Play, RefreshCw, AlertCircle } from 'lucide-react';
 import SearchToolbar from '../components/SearchToolbar';
 import StatsGrid from '../components/StatsGrid';
 import MatchGroupCard from '../components/MatchGroupCard';
@@ -21,8 +21,12 @@ const filterOptions = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const {
-    matchGroups, loading, merging, error, dedupStatus,
-    runDedup, approveGroup, rejectGroup, removeFromGroup, mergeSubset,
+    matchGroups, merging,
+    isStarting, isRetrieving, isJobRunning,
+    startError, retrieveError, mergeError,
+    lastRunTime,
+    runDedup, retrieveResults,
+    approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   } = useMatchGroups();
   const { notification, showNotification, dismissNotification } =
     useNotification();
@@ -139,22 +143,21 @@ export default function DashboardPage() {
 
   const handleRunDedup = async () => {
     await runDedup();
+    if (!startError) {
+      showNotification('Deduplication job started on the server.');
+    }
   };
 
-  // Show notification on errors (dedup or merge)
-  useEffect(() => {
-    if (!loading && !merging && error) {
-      showNotification(error, 'error');
-    }
-  }, [loading, merging, error]);
+  const handleRetrieveResults = async () => {
+    await retrieveResults();
+  };
 
+  // Show merge errors via notification
   useEffect(() => {
-    if (!loading && !error && matchGroups.length > 0) {
-      showNotification(
-        `Deduplication complete. Found ${matchGroups.length} match groups.`
-      );
+    if (!merging && mergeError) {
+      showNotification(mergeError, 'error');
     }
-  }, [loading, error, matchGroups.length]);
+  }, [merging, mergeError]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -174,31 +177,50 @@ export default function DashboardPage() {
       >
         <Button
           variant="contained"
-          startIcon={
-            loading ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : (
-              <Play size={18} />
-            )
-          }
+          startIcon={isStarting ? <CircularProgress size={18} color="inherit" /> : <Play size={18} />}
           onClick={handleRunDedup}
-          disabled={loading}
+          disabled={isStarting || isRetrieving || isJobRunning}
         >
-          {loading
-            ? dedupStatus === 'running'
-              ? 'Analyzing patients...'
-              : 'Starting...'
-            : 'Run Deduplication'}
+          {isStarting ? 'Starting...' : 'Run Deduplication'}
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={isRetrieving ? <CircularProgress size={18} color="inherit" /> : <RefreshCw size={18} />}
+          onClick={handleRetrieveResults}
+          disabled={isStarting || isRetrieving}
+        >
+          {isRetrieving ? 'Retrieving...' : 'Retrieve Results'}
         </Button>
       </SearchToolbar>
+
+      {/* Last run time + running indicator */}
+      <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
+        {lastRunTime
+          ? `Last run: ${new Date(lastRunTime).toLocaleString()}`
+          : 'No deduplication has been run yet.'}
+      </Typography>
 
       {/* Stats */}
       <StatsGrid stats={stats} />
 
-      {/* Error Display */}
-      {error && (
+      {/* Start error */}
+      {startError && (
         <Alert severity="error" onClose={() => {}}>
-          Deduplication failed: {error}
+          Failed to start deduplication: {startError}
+        </Alert>
+      )}
+
+      {/* Retrieve error / info */}
+      {retrieveError && (
+        <Alert
+          severity={
+            retrieveError.includes('Run the process first') || retrieveError.includes('still in progress')
+              ? 'info'
+              : 'error'
+          }
+          onClose={() => {}}
+        >
+          {retrieveError}
         </Alert>
       )}
 
@@ -215,7 +237,9 @@ export default function DashboardPage() {
             <AlertCircle size={40} style={{ marginBottom: 8 }} />
             <Typography>
               {matchGroups.length === 0
-                ? 'No match groups yet. Run deduplication to find duplicates.'
+                ? lastRunTime
+                  ? 'No duplicate groups found in the last run.'
+                  : 'No data yet. Click "Run Deduplication" to start, then "Retrieve Results" to load the data.'
                 : 'No match groups found matching your filters.'}
             </Typography>
           </Box>

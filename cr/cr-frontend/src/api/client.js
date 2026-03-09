@@ -1,4 +1,4 @@
-import { isAsgardeoEnabled } from '../config/auth';
+import { authMode } from '../config/auth';
 
 const API_BASE = '/api/fhir/r4';
 
@@ -33,7 +33,7 @@ export async function fetchApi(path, options = {}) {
     localStorage.removeItem('auth_user');
     // In Asgardeo mode, redirect to origin so the SDK can handle re-auth.
     // In simulated mode, go to the login page directly.
-    window.location.href = isAsgardeoEnabled ? '/' : '/login';
+    window.location.href = authMode === 'oidc' ? '/' : '/login';
     throw new ApiError(401, 'Unauthorized', null);
   }
 
@@ -48,4 +48,30 @@ export async function fetchApi(path, options = {}) {
   }
 
   return body;
+}
+
+// Returns the raw fetch Response so the caller can read status, headers, and body.
+// Used for FHIR async endpoints (dedupstart, dedupstatus) that return 202 + Content-Location.
+export async function fetchApiResponse(path, options = {}) {
+  const token = localStorage.getItem('auth_token');
+  const user = localStorage.getItem('auth_user');
+  const userEmail = user ? JSON.parse(user).email : null;
+
+  const headers = {
+    'Content-Type': 'application/fhir+json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(userEmail ? { 'X-User-Id': userEmail } : {}),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    window.location.href = authMode === 'oidc' ? '/' : '/login';
+    throw new ApiError(401, 'Unauthorized', null);
+  }
+
+  return response;
 }

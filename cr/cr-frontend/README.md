@@ -10,7 +10,8 @@ React management UI for the OpenHIE Client Registry MPI service. Provides patien
 | Vite | 7 | Build tool & dev server |
 | WSO2 Oxygen UI | latest | Component library (MUI-based) |
 | React Router | 7 | Client-side routing |
-| @asgardeo/react | 0.11 | Asgardeo OIDC authentication |
+| react-oidc-context | 3 | Generic OIDC authentication |
+| oidc-client-ts | 3 | OIDC protocol implementation |
 | date-fns | 4 | Date formatting |
 
 ## Project Structure
@@ -24,7 +25,7 @@ src/
 │   └── auditService.js     # Audit log API calls
 │
 ├── auth/
-│   ├── AuthContext.jsx     # Dual-mode auth provider (Asgardeo / simulated)
+│   ├── AuthContext.jsx     # Dual-mode auth provider (OIDC / simulated)
 │   └── ProtectedRoute.jsx  # Redirects unauthenticated users to /login
 │
 ├── components/
@@ -43,7 +44,7 @@ src/
 │   └── StatsGrid.jsx            # Dashboard stats cards
 │
 ├── config/
-│   └── auth.js             # Asgardeo SDK config + isAsgardeoEnabled flag
+│   └── auth.js             # Auth mode validation; authMode + authConfigError exports
 │
 ├── hooks/
 │   ├── usePatients.js      # Patient list state + CRUD operations
@@ -55,7 +56,7 @@ src/
 │   └── AppLayout.jsx       # AppBar + horizontal nav + <Outlet>
 │
 ├── pages/
-│   ├── LoginPage.jsx       # Login screen (Asgardeo button or simulated form)
+│   ├── LoginPage.jsx       # Login screen (OIDC redirect button or simulated form)
 │   ├── DashboardPage.jsx   # Stats overview
 │   ├── PatientsPage.jsx    # Patient search, CRUD, dedup management
 │   └── AuditPage.jsx       # Audit event log viewer
@@ -94,7 +95,7 @@ npm run dev
 # App at http://localhost:5173
 ```
 
-In development (no Asgardeo env vars set), login with **any** email and password — the simulated auth grants `admin` role automatically.
+Copy `.env.example` to `.env` and set `VITE_AUTH_MODE` before starting. For development, set `VITE_AUTH_MODE=simulated` and log in with **any** email and password — the simulated auth grants `admin` role automatically.
 
 ### Build for Production
 
@@ -105,23 +106,33 @@ npm run build
 
 ## Authentication
 
-### Development Mode (Simulated)
+### Simulated Mode (Development)
 
-No configuration needed. Any credentials are accepted at the login screen.
+Set `VITE_AUTH_MODE=simulated`. Any credentials are accepted at the login screen.
 
-### Production Mode (Asgardeo)
+### OIDC Mode (Production)
 
-1. Create a [free Asgardeo account](https://console.asgardeo.io)
-2. Create a **Single Page Application**
-3. Set:
-   - **Authorized Redirect URL**: your app origin (e.g. `http://localhost:5173`)
-   - **Allowed Logout URL**: same as above
-4. Copy `.env.example` to `.env` and fill in:
+Works with any OIDC-compliant identity provider. Set the following in `.env`:
 
 ```env
-VITE_ASGARDEO_CLIENT_ID=your-client-id
-VITE_ASGARDEO_BASE_URL=https://api.asgardeo.io/t/your-org-name
+VITE_AUTH_MODE=oidc
+VITE_OIDC_CLIENT_ID=your-client-id
+VITE_OIDC_AUTHORITY=https://your-oidc-provider-base-url
 ```
+
+1. Register a **Single Page Application** (SPA) in your identity provider
+2. Set the **Authorized Redirect URL** to your app origin (e.g. `http://localhost:5173`)
+3. Set `VITE_OIDC_AUTHORITY` to the issuer base URL — OIDC discovery is fetched from `{authority}/.well-known/openid-configuration`
+
+Provider examples:
+
+| Provider | `VITE_OIDC_AUTHORITY` |
+|----------|----------------------|
+| Asgardeo | `https://api.asgardeo.io/t/your-org-name` |
+| Keycloak | `https://your-keycloak-host/realms/your-realm` |
+| Auth0 | `https://your-tenant.auth0.com` |
+| Okta | `https://your-org.okta.com/oauth2/default` |
+| Azure AD | `https://login.microsoftonline.com/your-tenant-id/v2.0` |
 
 ### Role-Based Access
 
@@ -130,11 +141,12 @@ VITE_ASGARDEO_BASE_URL=https://api.asgardeo.io/t/your-org-name
 | `admin` | MPI Admin | Full access: create, edit, delete, merge, run dedup, reject matches |
 | `viewer` | MPI Viewer | Read-only: search, view, run $match, view dedup results |
 
-In Asgardeo, create groups named `admin` and `viewer`, assign users, and enable the `groups` User Attribute on the application. The `viewer` role is the default when no groups are configured.
+Configure your IdP to include a `groups` claim in the ID token with values `admin` and/or `viewer`. The `viewer` role is the default when no groups are configured.
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_ASGARDEO_CLIENT_ID` | No | Asgardeo SPA client ID. Leave blank for simulated auth. |
-| `VITE_ASGARDEO_BASE_URL` | No | Asgardeo API base URL (e.g. `https://api.asgardeo.io/t/myorg`). Leave blank for simulated auth. |
+| `VITE_AUTH_MODE` | **Yes** | `"oidc"` or `"simulated"`. App will not start without this. |
+| `VITE_OIDC_CLIENT_ID` | When `oidc` | Client ID from your identity provider |
+| `VITE_OIDC_AUTHORITY` | When `oidc` | OIDC issuer base URL |

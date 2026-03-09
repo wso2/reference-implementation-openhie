@@ -10,8 +10,8 @@ The H2 database (`cr-core/data/mpi.mv.db`) is created automatically on first run
 ## Schema Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         patients                            │
+┌──────────────────────────────────────────────────────────────┐
+│                         patients                             │
 ├─────────────────┬───────────────┬────────────────────────────┤
 │ Column          │ Type          │ Notes                      │
 ├─────────────────┼───────────────┼────────────────────────────┤
@@ -37,11 +37,11 @@ The H2 database (`cr-core/data/mpi.mv.db`) is created automatically on first run
           │ 1:N             │ 1:N                 │ 1:N
           ▼                 ▼                     ▼
 ┌─────────────────┐  ┌──────────────────────┐  ┌──────────────────────────────┐
-│   identifiers   │  │    blocking_keys      │  │   dedup_pair_decisions        │
+│   identifiers   │  │    blocking_keys     │  │   dedup_pair_decisions       │
 ├─────┬───────────┤  ├──────┬───────────────┤  ├──────────────┬───────────────┤
 │row_id│PK,Auto-i │  │row_id│PK, Auto-incr  │  │patient_id_1  │PK, FK→patient │
 │patient_id│FK→pt │  │patient_id│FK→patients│  │patient_id_2  │PK, FK→patient │
-│system│Namespace │  │block_type│Key category│  │decision_id   │VARCHAR(64)    │
+│system│Namespace │  │block_type│Key category│ │decision_id   │VARCHAR(64)    │
 │value │Identifier│  │block_value│Computed  │  │status        │VARCHAR(30)    │
 ├─────┴───────────┤  ├──────┴───────────────┤  │active        │BOOLEAN        │
 │UNIQUE(sys,val)  │  │IDX(block_type,value) │  │created_at    │VARCHAR(30)    │
@@ -54,13 +54,13 @@ The H2 database (`cr-core/data/mpi.mv.db`) is created automatically on first run
                                                │IDX(pid1,status), IDX(active) │
                                                └──────────────────────────────┘
 
-┌──────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────┐
 │                   dedup_compared_pairs                        │
 ├──────────────┬───────────────┬────────────────────────────────┤
 │ Column       │ Type          │ Notes                          │
 ├──────────────┼───────────────┼────────────────────────────────┤
-│ patient_id_1 │ VARCHAR(64)   │ PK (composite), id_1 < id_2   │
-│ patient_id_2 │ VARCHAR(64)   │ PK (composite)                │
+│ patient_id_1 │ VARCHAR(64)   │ PK (composite), id_1 < id_2    │
+│ patient_id_2 │ VARCHAR(64)   │ PK (composite)                 │
 │ compared_at  │ VARCHAR(30)   │ When comparison was performed  │
 │ score        │ DECIMAL(5,4)  │ Match score                    │
 └──────────────┴───────────────┴────────────────────────────────┘

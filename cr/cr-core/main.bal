@@ -44,7 +44,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
     // POST /Patient/$match
     // ========================================
     resource function post Patient/\$match(r4:FHIRContext ctx, pdqm:MatchParametersIn payload)
-            returns r4:Bundle|http:BadRequest|http:InternalServerError|http:Unauthorized|http:Forbidden {
+            returns http:Ok|http:BadRequest|http:InternalServerError|http:Unauthorized|http:Forbidden {
 
         log:printInfo("ITI-119: Patient Match");
 
@@ -107,9 +107,10 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         r4:Identifier[]? inputIdentifiers = inputPatient.identifier;
         if inputIdentifiers is r4:Identifier[] {
             foreach r4:Identifier id in inputIdentifiers {
-                pdqm:PDQmPatientIdentifier|error converted = id.cloneWithType();
-                if converted is pdqm:PDQmPatientIdentifier {
-                    identifiers.push(converted);
+                string? sys = id.system;
+                string? val = id.value;
+                if sys is string && val is string {
+                    identifiers.push({system: sys, value: val});
                 }
             }
         }
@@ -167,13 +168,13 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         // Audit successful match
         auditMatch(agentName, entries.length(), true);
 
-        return {
+        return <http:Ok>{body: {
             resourceType: "Bundle",
             id: uuid:createType1AsString(),
             'type: "searchset",
             total: entries.length(),
             entry: entries
-        };
+        }};
     }
 
     // ========================================
@@ -181,7 +182,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
     // GET /Patient/dedupstart
     // ========================================
     resource function get Patient/dedupstart(r4:FHIRContext ctx)
-            returns json|http:Conflict|http:Unauthorized|http:Forbidden {
+            returns http:Response|http:Unauthorized|http:Forbidden {
 
         log:printInfo("Custom: Start Async Patient Deduplication");
 
@@ -197,13 +198,16 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         string jobId;
         lock {
             if dedupRunning {
+                // Already running — return 202 with Content-Location so client can poll
                 string runningJobId = currentDedupJobId ?: "unknown";
-                return <http:Conflict>{
-                    body: {
-                        "message": "A deduplication job is already running",
-                        "jobId": runningJobId
-                    }
-                };
+                http:Response alreadyRunning = new;
+                alreadyRunning.statusCode = 202;
+                alreadyRunning.setHeader("Content-Location", "/Patient/dedupstatus");
+                alreadyRunning.setJsonPayload({
+                    "message": "A deduplication job is already running",
+                    "jobId": runningJobId
+                });
+                return alreadyRunning;
             }
 
             jobId = uuid:createType4AsString();
@@ -227,7 +231,11 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         // Fire-and-forget: run dedup in a background strand
         _ = start executeDedupAsync(jobId, agentName, dedupThreshold);
 
-        return {"jobId": jobId, "status": "pending"};
+        // Return 202 Accepted with Content-Location (FHIR async pattern, same as $export)
+        http:Response response = new;
+        response.statusCode = 202;
+        response.setHeader("Content-Location", "/Patient/dedupstatus");
+        return response;
     }
 
     // ========================================
@@ -236,7 +244,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
     // Returns the current/latest job status (only one job runs at a time)
     // ========================================
     resource function get Patient/dedupstatus(r4:FHIRContext ctx)
-            returns json|http:NotFound|http:Unauthorized|http:Forbidden {
+            returns http:Response|http:Unauthorized|http:Forbidden {
 
         AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER]);
         if authResult is AuthenticationError {
@@ -249,14 +257,12 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo("Custom: Poll Dedup Job Status");
 
         // Find the most recent job (running first, then latest by startedAt)
-        // Returns lightweight status only — use GET /Patient/dedup for full results
         string jobId = "";
         string jobStatus = "";
         string startedAt = "";
         string completedAt = "";
-        int totalPatients = 0;
-        int totalGroups = 0;
         string errorMsg = "";
+        DedupResult? fullResult = ();
         boolean found = false;
 
         lock {
@@ -289,9 +295,8 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
                         jobStatus = job.status;
                         startedAt = job.startedAt;
                         completedAt = job.completedAt ?: "";
-                        totalPatients = job.totalPatients ?: 0;
-                        totalGroups = job.totalGroups ?: 0;
                         errorMsg = job.errorMessage ?: "";
+                        fullResult = job.result;
                         found = true;
                     }
                 }
@@ -299,36 +304,39 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         }
 
         if !found {
-            return <http:NotFound>{body: errorOutcome("No dedup jobs found")};
+            http:Response notFound = new;
+            notFound.statusCode = 404;
+            notFound.setJsonPayload(errorOutcome("No dedup jobs found"));
+            return notFound;
         }
 
         log:printInfo(string `Dedup status: ${jobStatus} (job: ${jobId})`);
 
         if jobStatus == "completed" {
-            return {
-                "jobId": jobId,
-                "status": "completed",
-                "startedAt": startedAt,
-                "completedAt": completedAt,
-                "totalPatients": totalPatients,
-                "totalGroups": totalGroups
-            };
+            // 200 — done, full DedupResult inline (FHIR async pattern: same as $export manifest response)
+            http:Response ok = new;
+            ok.statusCode = 200;
+            if fullResult is DedupResult {
+                ok.setJsonPayload(fullResult.toJson());
+            }
+            return ok;
         }
+
         if jobStatus == "failed" {
-            return {
-                "jobId": jobId,
-                "status": "failed",
-                "startedAt": startedAt,
-                "completedAt": completedAt,
-                "error": errorMsg
-            };
+            // 500 — failed with OperationOutcome
+            http:Response failed = new;
+            failed.statusCode = 500;
+            failed.setJsonPayload(errorOutcome(errorMsg != "" ? errorMsg : "Deduplication failed"));
+            return failed;
         }
-        // Pending or running
-        return {
-            "jobId": jobId,
-            "status": jobStatus,
-            "startedAt": startedAt
-        };
+
+        // 202 — pending or running, still processing
+        http:Response inProgress = new;
+        inProgress.statusCode = 202;
+        inProgress.setHeader("X-Progress", jobStatus);
+        inProgress.setHeader("Retry-After", "2");
+        inProgress.setJsonPayload({"jobId": jobId, "status": jobStatus, "startedAt": startedAt});
+        return inProgress;
     }
 
     // ========================================

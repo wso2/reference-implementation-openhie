@@ -11,22 +11,22 @@ The OpenHIE Client Registry is a three-service architecture: a FHIR R4 MPI backe
 
 ```
                    ┌──────────────────────────────────┐
-                   │    Browser (React App)            │
-                   │    http://localhost:5173          │
+                   │    Browser (React App)           │
+                   │    http://localhost:5173         │
                    └──────┬──────────────┬────────────┘
           /api/* → 9090   │              │ OIDC (production)
                           │              │
           ┌───────────────┘         ┌────▼───────────────┐
-          │                         │  WSO2 Asgardeo      │
-          ▼                         │  (OIDC IdP)         │
+          │                         │  OIDC IdP          │
+          ▼                         │  (any provider)    │
 ┌─────────────────────┐             └────────────────────┘
 │  cr-core            │
-│  Ballerina FHIR R4  │──POST /audits──►
-│  localhost:9090     │             ┌──────────────────────┐
-└────────┬────────────┘             │  audit-service       │
-         │                          │  Ballerina AuditEvent│
-         ▼                          │  localhost:9093      │
-┌─────────────────────┐             └──────────────────────┘
+│  Ballerina FHIR R4  │──POST /audits──►  ┌──────────────────────┐
+│  localhost:9090     │                   │  audit-service       │
+└────────┬────────────┘                   │  Ballerina AuditEvent│
+         │                                │  localhost:9093      │
+         ▼                                └──────────────────────┘
+┌─────────────────────┐                   
 │  H2 Database        │
 │  data/mpi.mv.db     │
 └─────────────────────┘
@@ -34,22 +34,26 @@ The OpenHIE Client Registry is a three-service architecture: a FHIR R4 MPI backe
 
 ## Request Flow
 
+Example: user searches for patients by surname.
+
 ```
-Browser         cr-frontend       cr-core :9090    audit-service :9093
-   │                 │                 │                   │
-   │ User action     │                 │                   │
-   │────────────────►│                 │                   │
-   │                 │ GET /fhir/r4/Patient?family=Silva   │
-   │                 │────────────────►│                   │
-   │                 │                 │ SQL query → H2    │
-   │                 │                 │◄── result rows ───│
-   │                 │                 │ POST /audits ─────►
-   │                 │                 │◄─── 200 OK ───────│
-   │                 │ FHIR Bundle     │                   │
-   │                 │◄────────────────│                   │
-   │ Rendered cards  │                 │                   │
-   │◄────────────────│                 │                   │
+Browser        cr-frontend      cr-core :9090    H2 Database    audit-service :9093
+   │                │                │                │                  │
+   │  User action   │                │                │                  │
+   │───────────────►│                │                │                  │
+   │                │  GET /fhir/r4/Patient?family=Silva                 │
+   │                │───────────────►│                │                  │
+   │                │                │  SELECT …      │                  │
+   │                │                │───────────────►│                  │
+   │                │                │◄── result rows─│                  │
+   │                │  FHIR Bundle   │                │                  │
+   │                │◄───────────────│                │                  │
+   │ Rendered cards │                │                │                  │
+   │◄───────────────│                │  POST /audits (async, new strand) │
+   │                │                │── ── ── ── ── ── ── ── ── ── ── ► │
+   │                │                │                │                  │
 ```
+> Audit events are sent fire-and-forget on a separate Ballerina strand. The FHIR response is returned immediately; audit delivery does not block or affect the caller.
 
 ## Services
 
@@ -84,7 +88,7 @@ Browser         cr-frontend       cr-core :9090    audit-service :9093
   - Patient search, create, update, delete
   - Deduplication review UI (start job, view groups, merge/reject)
   - Audit log viewer
-  - Dual-mode authentication (Asgardeo + simulated)
+  - Dual-mode authentication (OIDC + simulated)
 
 ## Repository Structure
 
@@ -109,7 +113,7 @@ openhie_cr/
 ├── cr-frontend/              # React management UI
 │   ├── src/
 │   │   ├── api/              # API clients (patientService, auditService, matchService)
-│   │   ├── auth/             # AuthContext (Asgardeo + simulated), ProtectedRoute
+│   │   ├── auth/             # AuthContext (OIDC + simulated), ProtectedRoute
 │   │   ├── components/       # Reusable UI components
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── layouts/          # AppLayout with navigation
@@ -127,10 +131,10 @@ openhie_cr/
 ## Authentication Architecture
 
 ```
-┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Browser    │────→│  Asgardeo IdP    │────→│  Asgardeo       │
-│  (React App) │←────│  (OIDC / SCIM2)  │←────│  Console        │
-└──────┬───────┘     └──────────────────┘     └─────────────────┘
+┌──────────────┐     ┌──────────────────┐
+│   Browser    │────→│  OIDC IdP        │
+│  (React App) │←────│  (any provider)  │
+└──────┬───────┘     └──────────────────┘
        │
        │  Bridge Token (base64 JSON)
        │  + X-User-Id header
@@ -142,7 +146,7 @@ openhie_cr/
 └──────────────┘     └──────────────────┘
 ```
 
-The frontend creates a **bridge token** (base64-encoded `{ sub, role, exp }` JSON) from the Asgardeo session, which the backend decodes for authorization. A future phase will validate real Asgardeo JWTs via the JWKS endpoint.
+The frontend creates a **bridge token** (base64-encoded `{ sub, role, exp }` JSON) from the OIDC session, which the backend decodes for authorization. A future phase will validate real OIDC JWTs via the JWKS endpoint.
 
 ## Design Decisions
 

@@ -223,7 +223,7 @@ public isolated function auditPatientDedup(string agentName, int groupCount, boo
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditRead(string patientId, string agentName, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientRead(patientId, agentName, success, reason));
+    _ = start sendAuditEvent(auditPatientRead(patientId, agentName, success, reason));
 }
 
 # Audit a patient search operation (fire-and-forget)
@@ -234,7 +234,7 @@ public function auditRead(string patientId, string agentName, boolean success, s
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditSearch(string queryString, string agentName, int resultCount, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientSearch(queryString, agentName, resultCount, success, reason));
+    _ = start sendAuditEvent(auditPatientSearch(queryString, agentName, resultCount, success, reason));
 }
 
 # Audit a patient match operation (fire-and-forget)
@@ -244,7 +244,7 @@ public function auditSearch(string queryString, string agentName, int resultCoun
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditMatch(string agentName, int matchCount, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientMatch(agentName, matchCount, success, reason));
+    _ = start sendAuditEvent(auditPatientMatch(agentName, matchCount, success, reason));
 }
 
 # Audit a patient create operation (fire-and-forget)
@@ -254,7 +254,7 @@ public function auditMatch(string agentName, int matchCount, boolean success, st
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditCreate(string patientId, string agentName, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientCreate(patientId, agentName, success, reason));
+    _ = start sendAuditEvent(auditPatientCreate(patientId, agentName, success, reason));
 }
 
 # Audit a patient update operation (fire-and-forget)
@@ -264,7 +264,7 @@ public function auditCreate(string patientId, string agentName, boolean success,
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditUpdate(string patientId, string agentName, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientUpdate(patientId, agentName, success, reason));
+    _ = start sendAuditEvent(auditPatientUpdate(patientId, agentName, success, reason));
 }
 
 # Audit a patient delete operation (fire-and-forget)
@@ -274,7 +274,7 @@ public function auditUpdate(string patientId, string agentName, boolean success,
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditDelete(string patientId, string agentName, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientDelete(patientId, agentName, success, reason));
+    _ = start sendAuditEvent(auditPatientDelete(patientId, agentName, success, reason));
 }
 
 # Audit a patient dedup operation (fire-and-forget)
@@ -284,7 +284,7 @@ public function auditDelete(string patientId, string agentName, boolean success,
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditDedup(string agentName, int groupCount, boolean success, string reason = "") {
-    sendAuditEvent(auditPatientDedup(agentName, groupCount, success, reason));
+    _ = start sendAuditEvent(auditPatientDedup(agentName, groupCount, success, reason));
 }
 
 # Audit a patient merge/resolve duplicate operation (fire-and-forget)
@@ -295,7 +295,7 @@ public function auditDedup(string agentName, int groupCount, boolean success, st
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
 public function auditMerge(string subsumedId, string survivingId, string agentName, boolean success, string reason = "") {
-    sendAuditEvent(buildAuditEvent("update", "U", success,
+    _ = start sendAuditEvent(buildAuditEvent("update", "U", success,
         reason != "" ? reason : string `Merge: Patient/${subsumedId} replaced-by Patient/${survivingId}`,
         agentName, [
             getEntity("1", "1", string `Patient/${subsumedId}`),
