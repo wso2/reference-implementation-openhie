@@ -16,9 +16,6 @@
 
 import ballerina/http;
 import ballerinax/health.hl7v2;
-import ballerinax/health.hl7v24;
-import ballerinax/health.hl7v23;
-import ballerinax/health.hl7v25;
 
 public isolated function buildRequestContextForHTTP(http:Request originalReq, http:Request transformedReq) returns HTTPRequstContext|error {
     // TODO:extract user details
@@ -33,17 +30,22 @@ public isolated function buildRequestContextForHTTP(http:Request originalReq, ht
 
 public isolated function buildRequestContextForTCP(string data, hl7v2:Message hl7Message, json transformedData, string in_contentType) returns TcpRequestContext|error {
     // TODO: extract user details
-    hl7v24:MSH|hl7v23:MSH|hl7v25:MSH msh = <hl7v24:MSH|hl7v23:MSH|hl7v25:MSH>hl7Message["msh"];
+    map<anydata> msh = <map<anydata>>hl7Message["msh"];
+    map<anydata> hd3 = <map<anydata>>msh["msh3"];
+    map<anydata> hd4 = <map<anydata>>msh["msh4"];
+    map<anydata> hd5 = <map<anydata>>msh["msh5"];
+    map<anydata> hd6 = <map<anydata>>msh["msh6"];
+    
     return {
         contentType: in_contentType,
-        username: msh.msh3.hd1,
+        username: hd3["hd1"].toString(),
         fhirMessage: transformedData,
-        msgId: msh.msh10,
+        msgId: msh["msh10"].toString(),
         eventCode: extractHl7MessageType(data),
         patientId: extractPatientId(data),
-        sendingFacility: msh.msh4.hd1,
-        receivingFacility: msh.msh6.hd1,
-        sendingApplication: msh.msh3.hd1,
-        receivingApplication: msh.msh5.hd1
+        sendingFacility: hd4["hd1"].toString(),
+        receivingFacility: hd6["hd1"].toString(),
+        sendingApplication: hd3["hd1"].toString(),
+        receivingApplication: hd5["hd1"].toString()
     };
 }

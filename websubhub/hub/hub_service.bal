@@ -14,8 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import in_memory_hub.message_queue as mq;
-import in_memory_hub.store;
+import IOL_Runtime.message_queue as mq;
+import IOL_Runtime.store;
 
 import ballerina/websubhub;
 

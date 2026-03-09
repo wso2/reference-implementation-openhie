@@ -9,3 +9,6 @@ version = "1.0.0"
 
 [build-options]
 observabilityIncluded = true
+
+[dependencies]
+"ballerina/websubhub" = "1.15.1"

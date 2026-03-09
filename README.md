@@ -44,6 +44,7 @@ sh setup.sh
 USERNAME="admin"
 PASSWORD="openHIEdemo!123"
 ```
+Use global Tenant and go to dashboards and select `openhie-ref-impl`
 
 If you want to run the services individually, follow the steps below:
 
@@ -68,6 +69,7 @@ If you want to run the services individually, follow the steps below:
    cd opensearch
    docker-compose up
    ```
+
 
 ## Endpoints
 

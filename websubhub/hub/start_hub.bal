@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import in_memory_hub.dispatcher;
+import IOL_Runtime.dispatcher;
 
 import ballerina/log;
 import ballerina/websubhub;

@@ -48,15 +48,15 @@ isolated function transform(
 ) returns hl7v24:RSP_K21|error =>
 
     let
-    r4:HumanName[] name = check fhirPatient.name.ensureType(),
+    r4:HumanName[] name = fhirPatient.name ?: [],
     string familyName = name[0]?.family ?: "Unknown",
     string givenName = joinStrings(name[0]?.given ?: []),
-    r4:Address[] address = check fhirPatient.address.ensureType(),
+    r4:Address[] address = fhirPatient.address ?: [],
     string addressLine = joinStrings(address[0]?.line ?: []),
     string city = address[0]?.city ?: "Unknown",
     string state = address[0]?.state ?: "Unknown",
     string postalCode = address[0]?.postalCode ?: "Unknown",
-    r4:ContactPoint[] telecom = check fhirPatient.telecom.ensureType(),
+    r4:ContactPoint[] telecom = fhirPatient.telecom ?: [],
     string phone = telecom.length() > 0 && telecom[0]?.value is string ? <string>telecom[0].value : "Unknown",
     string gender = fhirPatient.gender.toString() == "male" ? "M" : fhirPatient.gender.toString() == "female" ? "F" : "U",
     string messageDateTime = getCurrentTimestamp()
@@ -79,7 +79,8 @@ isolated function transform(
                 ts1: messageDateTime
             },
             msh9: {
-                msg1: MESSAGE_TYPE
+                msg1: "RSP",
+                msg2: "K21"
             },
             msh10: messageControlId,
             msh11: {
@@ -103,47 +104,45 @@ isolated function transform(
             qak1: messageControlId,
             qak2: "OK"
         },
-        query_response: [
-            {
-                pid: {
-                    pid1: "1",
-                    pid3: [
-                        {
-                            cx1: fhirPatient.id ?: "Unknown",
-                            cx4: {
-                                hd1: "Hospital",
-                                hd2: "MR"
-                            }
+        query_response: {
+            pid: {
+                pid1: "1",
+                pid3: [
+                    {
+                        cx1: fhirPatient.id ?: "Unknown",
+                        cx4: {
+                            hd1: "Hospital",
+                            hd2: "MR"
                         }
-                    ],
-                    pid5: [
-                        {
-                            xpn1: {
-                                fn1: familyName
-                            },
-                            xpn2: givenName
-                        }
-                    ],
-                    pid7: {
-                        ts1: fhirPatient.birthDate.toString()
-                    },
-                    pid8: gender,
-                    pid11: [
-                        {
-                            xad1: {
-                                sad1: addressLine
-                            },
-                            xad3: city,
-                            xad4: state,
-                            xad5: postalCode
-                        }
-                    ],
-                    pid13: [
-                        {
-                            xtn1: phone
-                        }
-                    ]
-                }
+                    }
+                ],
+                pid5: [
+                    {
+                        xpn1: {
+                            fn1: familyName
+                        },
+                        xpn2: givenName
+                    }
+                ],
+                pid7: {
+                    ts1: fhirPatient.birthDate.toString()
+                },
+                pid8: gender,
+                pid11: [
+                    {
+                        xad1: {
+                            sad1: addressLine
+                        },
+                        xad3: city,
+                        xad4: state,
+                        xad5: postalCode
+                    }
+                ],
+                pid13: [
+                    {
+                        xtn1: phone
+                    }
+                ]
             }
-        ]
+        }
     };
