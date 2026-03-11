@@ -11,27 +11,20 @@ import {
   FormControlLabel,
 } from '@wso2/oxygen-ui';
 import { GitMerge, Check, X, User, FileText } from 'lucide-react';
-import { getPatientName, getPatientIdentifier } from '../utils/fhirHelpers';
+import { getPatientName } from '../utils/fhirHelpers';
 import { formatDate } from '../utils/formatters';
 
-const fieldDefs = [
-  { key: 'name', label: 'Name', getValue: (p) => getPatientName(p) },
-  { key: 'identifier', label: 'Identifier', getValue: (p) => getPatientIdentifier(p) },
-  { key: 'birthDate', label: 'Birth Date', getValue: (p) => formatDate(p.birthDate) },
-  { key: 'gender', label: 'Gender', getValue: (p) => p.gender },
-  {
-    key: 'phone',
-    label: 'Phone',
-    getValue: (p) =>
-      p.telecom?.find((t) => t.system === 'phone')?.value || '\u2014',
-  },
-  {
-    key: 'address',
-    label: 'Address',
-    getValue: (p) =>
-      `${p.address?.[0]?.line?.join(', ') || ''}, ${p.address?.[0]?.city || ''}`,
-  },
-];
+function abbreviateSystem(system) {
+  if (!system) return 'Identifier';
+  try {
+    const url = new URL(system);
+    const segments = url.pathname.split('/').filter(Boolean);
+    return segments[segments.length - 1] || url.hostname;
+  } catch {
+    const parts = system.split('/').filter(Boolean);
+    return parts[parts.length - 1] || system;
+  }
+}
 
 export default function MergeModal({
   group,
@@ -43,6 +36,49 @@ export default function MergeModal({
   if (!group) return null;
 
   const patientCount = group.patients.length;
+
+  // Collect all unique identifier systems across all patients
+  const allSystems = [];
+  const seenSystems = new Set();
+  group.patients.forEach((patient) => {
+    (patient.identifier || []).forEach((id) => {
+      const sys = id.system ?? '__bare__';
+      if (!seenSystems.has(sys)) {
+        seenSystems.add(sys);
+        allSystems.push(sys);
+      }
+    });
+  });
+
+  // One fieldDef per unique identifier system
+  const identifierFieldDefs = allSystems.map((sys) => ({
+    key: `identifier__${sys}`,
+    label: abbreviateSystem(sys === '__bare__' ? null : sys),
+    getValue: (patient) => {
+      const match = (patient.identifier || []).find(
+        (id) => (id.system ?? '__bare__') === sys
+      );
+      return match?.value || '\u2014';
+    },
+  }));
+
+  const fieldDefs = [
+    { key: 'name', label: 'Name', getValue: (p) => getPatientName(p) },
+    ...identifierFieldDefs,
+    { key: 'birthDate', label: 'Birth Date', getValue: (p) => formatDate(p.birthDate) },
+    { key: 'gender', label: 'Gender', getValue: (p) => p.gender },
+    {
+      key: 'phone',
+      label: 'Phone',
+      getValue: (p) => p.telecom?.find((t) => t.system === 'phone')?.value || '\u2014',
+    },
+    {
+      key: 'address',
+      label: 'Address',
+      getValue: (p) =>
+        `${p.address?.[0]?.line?.join(', ') || ''}, ${p.address?.[0]?.city || ''}`,
+    },
+  ];
 
   // Build merged preview
   const mergedPreview = {};
