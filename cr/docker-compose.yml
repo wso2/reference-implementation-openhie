@@ -1,0 +1,29 @@
+version: "3.8"
+
+# PostgreSQL service for CR-Core testing.
+# Start with: docker-compose up -d
+# Then set in cr-core/Config.toml:
+#   dbType     = "postgresql"
+#   dbUrl      = "jdbc:postgresql://localhost:5432/cr_db"
+#   dbUser     = "postgres"
+#   dbPassword = "postgres"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cr_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - cr_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cr_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cr_pg_data:

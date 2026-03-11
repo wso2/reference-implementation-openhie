@@ -32,16 +32,16 @@ public isolated function enqueue(readonly & websubhub:UpdateMessage message) {
 #
 # + topic - Requested `topic`
 # + return - `message_queue:Message` if a message is available for the `topic` or else `()`
-public isolated function dequeue(readonly & string topic) returns readonly & websubhub:UpdateMessage? {
+isolated function dequeue(readonly & string topic) returns readonly & websubhub:UpdateMessage? {
     lock {
         [int, websubhub:UpdateMessage][] availableMessages = queue.enumerate().filter(isolated function([int, websubhub:UpdateMessage] details) returns boolean {
-            var [idx, msg] = details;
+            var [_idx, msg] = details;
             return msg.hubTopic == topic;
         });
         if availableMessages.length() < 1 {
             return;
         }
-        var [idx, msg] = availableMessages[0];
+        var [idx, _msg] = availableMessages[0];
         return queue.remove(idx).cloneReadOnly();
     }
 }

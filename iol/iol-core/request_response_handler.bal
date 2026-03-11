@@ -47,9 +47,10 @@ public isolated function handleHttp(http:Request req, http:Caller caller) return
         ResponseContext resCtx = check routeHttp(reqCtx);
         http:Response transformedResponse = check messageTransformer.revertTransformation(resCtx.response);
 
+        string|error _payload = transformedResponse.getTextPayload();
         ResponseLog responseLog = {
             status: transformedResponse.statusCode.toString(),
-            payload: check transformedResponse.getTextPayload(),
+            payload: _payload is string ? _payload : "",
             responseHeaders: extractResponseHeaders(transformedResponse),
             timestamp: time:utcToString(time:utcNow())
         };

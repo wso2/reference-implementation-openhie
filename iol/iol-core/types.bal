@@ -38,11 +38,14 @@ public type Ports record {|
 public enum workflow {
     PATIENT_DEMOGRAPHICS_QUERY,
     PATIENT_DEMOGRAPHICS_UPDATE,
-    PATIENT_DEMOGRAPHICS_CREATE
+    PATIENT_DEMOGRAPHICS_CREATE,
+    PATIENT_DEMOGRAPHICS_MATCH,
+    PATIENT_DEMOGRAPHICS_DELETE
 };
 
 type GenericRoute record {|
     string target;
+    string pathPrefix?;
     HttpAuthConfig auth?;
     workflow workflow;
 |};

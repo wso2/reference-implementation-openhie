@@ -12,7 +12,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/audit-api': {
-        target: 'http://localhost:9093',
+        target: 'http://localhost:9096',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/audit-api/, ''),
       },

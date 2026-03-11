@@ -49,7 +49,7 @@ public function syncDispatcherState() returns error? {
                 newTopic = !dispatcherClients.hasKey(topic);
             }
             if newTopic {
-                _ = @strand {thread: "any"} start consumeMessages(topic);
+                _ = start consumeMessages(topic);
             }
 
             readonly & websubhub:Subscription[]? subscribers = store:retrieveAvailableSubscriptions(topic);

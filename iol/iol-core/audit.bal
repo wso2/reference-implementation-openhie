@@ -36,7 +36,12 @@ public isolated function auditRequest(workflow workflow, string username, string
         PATIENT_DEMOGRAPHICS_CREATE => {
             check sendAuditEvent(buildPdcAuditRequest(username, objectID, sysname, "0"));
         }
-        // Add more cases for other workflows
+        PATIENT_DEMOGRAPHICS_MATCH => {
+            check sendAuditEvent(buildPdqAuditRequest(username, objectID, sysname, "0"));
+        }
+        PATIENT_DEMOGRAPHICS_DELETE => {
+            check sendAuditEvent(buildPddAuditRequest(username, objectID, sysname, "0"));
+        }
         _ => {
             log:printError("Invalid workflow.");
         }
@@ -94,6 +99,24 @@ public isolated function buildPduAuditRequest(string username, string objectID, 
         sourceObserverType: "3", // Assuming "3" is the appropriate type for the source observer
         entityType: "2", // Object type for a person (patient)
         entityRole: "1", // 1 for patient role
+        entityWhatReference: objectID
+    };
+}
+
+public isolated function buildPddAuditRequest(string username, string objectID, string sysname, string outcome) returns InternalAuditEvent {
+    return {
+        typeCode: "110112",
+        subTypeCode: "DELETE",
+        actionCode: "D",
+        outcomeCode: outcome,
+        recordedTime: time:utcToString(time:utcNow(3)),
+        agentType: "User",
+        agentName: username,
+        agentIsRequestor: true,
+        sourceObserverName: sysname,
+        sourceObserverType: "3",
+        entityType: "2",
+        entityRole: "1",
         entityWhatReference: objectID
     };
 }

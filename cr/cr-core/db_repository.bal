@@ -1,9 +1,10 @@
 // Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 // Licensed under the Apache License, Version 2.0
 
-// H2 Database Repository for PDQmPatient Storage
-// ===============================================
-// Stores full PDQmPatient FHIR resources in H2 database
+// Database Repository for PDQmPatient Storage (H2 / PostgreSQL)
+// ==============================================================
+// Stores full PDQmPatient FHIR resources in a pluggable SQL database.
+// Set dbType = "h2" (default) or "postgresql" in Config.toml to switch.
 
 import ballerina/sql;
 import ballerina/time;
@@ -20,6 +21,10 @@ import ballerina/log;
 configurable string dbUrl = ?;
 configurable string dbUser = ?;
 configurable string dbPassword = ?;
+configurable string dbType = "h2";
+
+// Database provider — selected via factory based on dbType
+final DatabaseProvider dbProvider = check getDatabaseProvider(dbType);
 
 // Database client - initialized on module load
 final jdbc:Client dbClient = check new (
@@ -85,105 +90,10 @@ public type InvalidPatientError distinct error;
 // DATABASE INITIALIZATION
 // ============================================================
 
-# Initialize database schema
+# Initialize database schema using the active database provider.
 # + return - error if database initialization fails
 public function initDatabase() returns error? {
-    // Patients table - stores full FHIR JSON + indexed search fields
-    _ = check dbClient->execute(`
-        CREATE TABLE IF NOT EXISTS patients (
-            id VARCHAR(64) PRIMARY KEY,
-            resource_json CLOB NOT NULL,
-            active BOOLEAN DEFAULT TRUE,
-            family_name VARCHAR(255),
-            given_name VARCHAR(255),
-            gender VARCHAR(20),
-            birth_date VARCHAR(10),
-            phone VARCHAR(50),
-            email VARCHAR(255),
-            city VARCHAR(100),
-            state VARCHAR(100),
-            postal_code VARCHAR(20),
-            country VARCHAR(100),
-            created_at VARCHAR(30),
-            updated_at VARCHAR(30),
-            version INT DEFAULT 1,
-            blocking_keys_at VARCHAR(30)
-        )
-    `);
-
-    // Identifiers table - for fast identifier lookups
-    _ = check dbClient->execute(`
-        CREATE TABLE IF NOT EXISTS identifiers (
-            row_id INT AUTO_INCREMENT PRIMARY KEY,
-            patient_id VARCHAR(64) NOT NULL,
-            system VARCHAR(500) NOT NULL,
-            "value" VARCHAR(500) NOT NULL,
-            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
-            UNIQUE (system, "value")
-        )
-    `);
-
-    // Create indexes
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_ident_patient ON identifiers(patient_id)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_family ON patients(family_name)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_given ON patients(given_name)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_dob ON patients(birth_date)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_gender ON patients(gender)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_active ON patients(active)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_updated_at ON patients(updated_at)`);
-
-
-    // Blocking keys table — pre-computed keys for candidate selection
-    _ = check dbClient->execute(`
-        CREATE TABLE IF NOT EXISTS blocking_keys (
-            row_id INT AUTO_INCREMENT PRIMARY KEY,
-            patient_id VARCHAR(64) NOT NULL,
-            block_type VARCHAR(30) NOT NULL,
-            block_value VARCHAR(255) NOT NULL,
-            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
-        )
-    `);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_block_lookup ON blocking_keys(block_type, block_value)`);
-    _ = check dbClient->execute(`CREATE INDEX IF NOT EXISTS idx_block_patient ON blocking_keys(patient_id)`);
-
-    // Dedup compared pairs — tracks which pairs have been scored (for incremental dedup)
-    _ = check dbClient->execute(`
-        CREATE TABLE IF NOT EXISTS dedup_compared_pairs (
-            patient_id_1 VARCHAR(64) NOT NULL,
-            patient_id_2 VARCHAR(64) NOT NULL,
-            compared_at VARCHAR(30) NOT NULL,
-            score DECIMAL(5,4),
-            PRIMARY KEY (patient_id_1, patient_id_2)
-        )
-    `);
-    _ = check dbClient->execute(`
-        CREATE TABLE IF NOT EXISTS dedup_pair_decisions (
-            patient_id_1 VARCHAR(64) NOT NULL,
-            patient_id_2 VARCHAR(64) NOT NULL,
-            decision_id VARCHAR(64) NOT NULL,
-            status VARCHAR(30) NOT NULL,
-            active BOOLEAN DEFAULT TRUE,
-            created_at VARCHAR(30) NOT NULL,
-            updated_at VARCHAR(30) NOT NULL,
-            resolved_at VARCHAR(30),
-            created_by VARCHAR(255),
-            resolved_by VARCHAR(255),
-            resolution_reason VARCHAR(255),
-            PRIMARY KEY (patient_id_1, patient_id_2),
-            FOREIGN KEY (patient_id_1) REFERENCES patients(id) ON DELETE CASCADE,
-            FOREIGN KEY (patient_id_2) REFERENCES patients(id) ON DELETE CASCADE
-        )
-    `);
-    _ = check dbClient->execute(
-        `CREATE INDEX IF NOT EXISTS idx_pair_decisions_p1_status ON dedup_pair_decisions(patient_id_1, status)`
-    );
-    _ = check dbClient->execute(
-        `CREATE INDEX IF NOT EXISTS idx_pair_decisions_p2_status ON dedup_pair_decisions(patient_id_2, status)`
-    );
-    _ = check dbClient->execute(
-        `CREATE INDEX IF NOT EXISTS idx_pair_decisions_active ON dedup_pair_decisions(active)`
-    );
-
+    check dbProvider.initSchema(dbClient);
 }
 
 // ============================================================
@@ -1729,10 +1639,9 @@ public function deduplicatePatients(decimal threshold = 0.6d) returns DedupResul
 
         decimal score = calculateScore(p1, p2);
 
-        // Record comparison (MERGE = upsert in H2)
+        // Record comparison — upsert delegated to active database provider
         _ = check dbClient->execute(
-            `MERGE INTO dedup_compared_pairs (patient_id_1, patient_id_2, compared_at, score)
-             VALUES (${pair.pid1}, ${pair.pid2}, ${now}, ${score})`
+            dbProvider.getUpsertComparePair(pair.pid1, pair.pid2, now, score)
         );
     }
 

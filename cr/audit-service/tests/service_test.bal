@@ -2,7 +2,7 @@ import ballerina/http;
 import ballerina/test;
 import ballerinax/health.fhir.r4.international401;
 
-http:Client testClient = check new ("http://localhost:9093");
+http:Client testClient = check new ("http://localhost:9096");
 
 // Test functions
 @test:Config {}

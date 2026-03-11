@@ -15,43 +15,61 @@ TCP_LISTENER_PORT = 9094
 
 [[httpRoutes]]
 contentType = "application/json"
+methods = ["POST"]
+path = "^/Patient/\\$match"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
+workflow = "PATIENT_DEMOGRAPHICS_MATCH"
+
+[[httpRoutes]]
+contentType = "application/json"
 methods = ["GET"]
 path = "^/Patient(.*)"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_QUERY"
-# auth = {tokenUrl = "http://localhost:9092/token", clientId = "client_id", clientSecret = "client_secret", scopes = ["scope1", "scope2"]}
-# auth = {username = "admin", password = "admin"}
 
 [[httpRoutes]]
 contentType = "application/json"
 methods = ["POST"]
 path = "/Patient"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_CREATE"
-# auth = {tokenUrl = "http://localhost:9092/token", clientId = "client_id", clientSecret = "client_secret", scopes = ["scope1", "scope2"]}
-# auth = {username = "admin", password = "admin"}
 
 [[httpRoutes]]
 contentType = "application/json"
 methods = ["PUT"]
 path = "^/Patient(.*)"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_UPDATE"
+
+[[httpRoutes]]
+contentType = "application/json"
+methods = ["DELETE"]
+path = "^/Patient(.*)"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
+workflow = "PATIENT_DEMOGRAPHICS_DELETE"
 
 [[tcpRoutes]]
 HL7Code = "QBP^Q21"
 method = "GET"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_QUERY"
 
 [[tcpRoutes]]
 HL7Code = "ADT^A01"
 method = "POST"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_CREATE"
 
 [[tcpRoutes]]
 HL7Code = "ADT^A06"
 method = "PUT"
-target = "http://localhost:9092"
+target = "http://localhost:9090"
+pathPrefix = "/fhir/r4"
 workflow = "PATIENT_DEMOGRAPHICS_UPDATE"

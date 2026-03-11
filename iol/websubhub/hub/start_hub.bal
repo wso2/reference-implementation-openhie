@@ -24,7 +24,7 @@ listener websubhub:Listener hubListener = check new (HUB_PORT);
 
 public function main() returns error? {
     // Initialize the Hub
-    _ = @strand {thread: "any"} start dispatcher:syncDispatcherState();
+    _ = start dispatcher:syncDispatcherState();
 
     check hubListener.attach(hubService, "/hub");
     check hubListener.'start();

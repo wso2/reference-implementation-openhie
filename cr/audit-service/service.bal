@@ -155,7 +155,7 @@ isolated function getLastTimestamp(string[] lines) returns string {
     return "";
 }
 
-int port = 9093;
+configurable int port = 9096;
 
 service / on new http:Listener(port) {
 

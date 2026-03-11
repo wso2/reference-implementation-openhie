@@ -72,17 +72,9 @@ public isolated function routeHttp(HTTPRequstContext reqCtx) returns ResponseCon
     do {
         HttpRoute targetRoute = check findRouteForHttpRequest(reqCtx.httpRequest.rawPath, reqCtx.httpRequest.method);
         http:Client _client = check getHTTPClient(targetRoute);
-        http:Request _req = check createHTTPRequestforHTTP(reqCtx.httpRequest, targetRoute);
+        [string, http:Request] [outboundPath, _req] = check createHTTPRequestforHTTP(reqCtx.httpRequest, targetRoute);
         check auditRequest(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
-        http:Response|error response;
-        match _req.method {
-            http:GET => {
-                response = _client->get(_req.rawPath);
-            }
-            _ => {
-                response = _client->forward(_req.rawPath, _req);
-            }
-        }
+        http:Response|error response = _client->execute(reqCtx.httpRequest.method, outboundPath, _req);
         if response is error {
             return error(string `Failed to forward the request to the Upstream Service: ${response.message()}`);
         }
@@ -98,18 +90,10 @@ public isolated function routeTCP(TcpRequestContext reqCtx) returns ResponseCont
     do {
         TcpRoute targetRoute = check findRouteForTcpRequest(reqCtx);
         http:Client _client = check getHTTPClient(targetRoute);
-        http:Request _req = check createHTTPRequestforTCP(targetRoute, reqCtx);
+        [string, http:Request] [outboundPath, _req] = check createHTTPRequestforTCP(targetRoute, reqCtx);
         check auditRequest(targetRoute.workflow, reqCtx.username, reqCtx.patientId, systemInfo.SYSNAME);
 
-        http:Response|error response;
-        match targetRoute.method {
-            http:GET => {
-                response = _client->get(_req.rawPath);
-            }
-            _ => {
-                response = _client->forward(_req.rawPath, _req);
-            }
-        }
+        http:Response|error response = _client->execute(targetRoute.method, outboundPath, _req);
         if response is error {
             return error("Failed to forward the request to the Upstream Service: " + response.message());
         }
@@ -148,43 +132,39 @@ isolated function findRouteForTcpRequest(TcpRequestContext reqCtx) returns TcpRo
     return error("No route found for the given message type");
 }
 
-isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqCtx) returns http:Request|error {
+isolated function createHTTPRequestforTCP(TcpRoute route, TcpRequestContext reqCtx) returns [string, http:Request]|error {
     http:Request req = new;
-    req.rawPath = check setRequestParams(route, reqCtx);
-    if route.method == "GET" {
-        return req;
-    }
+    string outboundPath = check setRequestParams(route, reqCtx);
     req.method = route.method;
+    if route.method == "GET" {
+        return [outboundPath, req];
+    }
     json payload = check extractPatientResource(reqCtx.fhirMessage, reqCtx.patientId);
-    req.setPayload(payload, "application/json");
-    return req;
+    req.setPayload(payload, "application/fhir+json");
+    return [outboundPath, req];
 }
 
-isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns http:Request|error {
-    
+isolated function createHTTPRequestforHTTP(http:Request req, HttpRoute route) returns [string, http:Request]|error {
     http:Request outboundFHIRReq = new;
-    regexp:RegExp pathRegex = check regexp:fromString(route.path);
-    regexp:Groups? subPath = pathRegex.findGroups(req.rawPath);
-    outboundFHIRReq.rawPath = "/";
-    if subPath is regexp:Groups && subPath.length() > 1 {
-        outboundFHIRReq.rawPath = outboundFHIRReq.rawPath + (<regexp:Span>subPath[0]).substring();
-    }
+    string prefix = route.pathPrefix ?: "";
+    string outboundPath = prefix + req.rawPath;
     outboundFHIRReq.method = req.method;
-    if req.method == "GET" {
-        return req;
+    string|error crAuthHeader = buildCRAuthHeader(req);
+    if crAuthHeader is string {
+        outboundFHIRReq.setHeader("Authorization", crAuthHeader);
     }
-    outboundFHIRReq.setPayload(check req.getJsonPayload(), "application/json");
-    // add query parameters
-    return outboundFHIRReq;
+    if req.method == "GET" || req.method == "DELETE" {
+        return [outboundPath, outboundFHIRReq];
+    }
+    outboundFHIRReq.setPayload(check req.getJsonPayload(), "application/fhir+json");
+    return [outboundPath, outboundFHIRReq];
 }
 
 isolated function setRequestParams(TcpRoute route, TcpRequestContext reqCtx) returns string|error {
-    // TODO: add more parameters
+    string prefix = route.pathPrefix ?: "";
     if (route.workflow == PATIENT_DEMOGRAPHICS_QUERY || route.workflow == PATIENT_DEMOGRAPHICS_UPDATE) && reqCtx.patientId != "" {
-        string path = "/Patient/";
-        path = path + reqCtx.patientId;
-        return path;
+        return prefix + "/Patient/" + reqCtx.patientId;
     }
-    return "";
+    return prefix;
 }
 

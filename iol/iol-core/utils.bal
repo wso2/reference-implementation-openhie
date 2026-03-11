@@ -1,5 +1,7 @@
 import ballerina/http;
+import ballerina/io;
 import ballerina/jwt;
+import ballerina/mime;
 import ballerina/time;
 import ballerinax/health.hl7v2;
 import ballerinax/health.hl7v23;
@@ -36,6 +38,30 @@ public isolated function getPayload(http:Request req) returns json|xml|string? {
         return textPayload;
     }
     return ();
+}
+
+// Reads x-jwt-assertion, extracts the username, and returns an
+// "Authorization: Bearer <token>" value compatible with the CR's auth.
+public isolated function buildCRAuthHeader(http:Request httpRequest) returns string|error {
+    string xJwt = check httpRequest.getHeader(X_JWT_HEADER);
+    [jwt:Header, jwt:Payload] headerPayload = check jwt:decode(xJwt);
+    jwt:Payload payload = headerPayload[1];
+
+    string username = "";
+    if payload.hasKey(IDP_CLAIMS) {
+        json idpClaims = <json>payload.get(IDP_CLAIMS);
+        json|error un = idpClaims.username;
+        username = un is json ? un.toString() : "";
+    } else if payload.sub is string {
+        username = payload.sub ?: "";
+    }
+
+    json crTokenPayload = {"sub": username, "role": "admin", "exp": 9999999999999};
+    string|byte[]|io:ReadableByteChannel|mime:EncodeError encoded = mime:base64Encode(crTokenPayload.toString());
+    if encoded !is string {
+        return error("Failed to encode CR auth token");
+    }
+    return "Bearer " + encoded;
 }
 
 public isolated function extractUserDetails(http:Request httpRequest) returns map<string>|error {
