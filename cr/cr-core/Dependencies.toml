@@ -540,7 +540,8 @@ dependencies = [
 	{org = "healthcare_samples", name = "ihe_pdqm_package"}
 ]
 modules = [
-	{org = "healthcare_samples", packageName = "client_registry", moduleName = "client_registry"}
+	{org = "healthcare_samples", packageName = "client_registry", moduleName = "client_registry"},
+	{org = "healthcare_samples", packageName = "client_registry", moduleName = "client_registry.handlers"}
 ]
 
 [[package]]

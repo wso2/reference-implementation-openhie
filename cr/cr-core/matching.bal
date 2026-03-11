@@ -131,13 +131,13 @@ isolated function computeBlockingKeys(
         });
     }
 
-    // Block 4: Phone (normalized)
+    // Block 4: Phone (canonicalized — strips US country code for cross-format matching)
     if phone is string && phone.trim().length() > 0 {
-        string normalizedPhone = normalizePhone(phone);
-        if normalizedPhone.length() > 0 {
+        string canonicalPhone = canonicalizePhone(phone);
+        if canonicalPhone.length() > 0 {
             keys.push({
                 blockType: "PHONE",
-                blockValue: normalizedPhone
+                blockValue: canonicalPhone
             });
         }
     }
@@ -167,6 +167,20 @@ isolated function normalizePhone(string phone) returns string {
         }
     }
     return result;
+}
+
+# Canonicalize a phone number for matching and blocking purposes.
+# Wraps normalizePhone() and additionally strips a leading US/Canada country
+# code "1" from 11-digit results, so "+1 (800) 555-0100" and "8005550100"
+# produce the same canonical form for blocking keys and scoring comparisons.
+# + phone - Raw phone string
+# + return - Canonical digits string
+isolated function canonicalizePhone(string phone) returns string {
+    string digits = normalizePhone(phone);
+    if digits.length() == 11 && digits.startsWith("1") {
+        return digits.substring(1);
+    }
+    return digits;
 }
 
 // ============================================================
@@ -519,7 +533,7 @@ isolated function calculateScore(pdqm:PDQmPatient input, pdqm:PDQmPatient candid
     string? inPhone = getTelecom(input, "phone");
     string? candPhone = getTelecom(candidate, "phone");
     if inPhone is string && candPhone is string {
-        decimal sim = compareField(normalizePhone(inPhone), normalizePhone(candPhone), fields.phone);
+        decimal sim = compareField(canonicalizePhone(inPhone), canonicalizePhone(candPhone), fields.phone);
         score += fields.phone.weight * sim;
     }
 

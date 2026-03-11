@@ -13,6 +13,7 @@ import ballerinax/java.jdbc;
 import ballerinax/health.fhir.r4;
 import healthcare_samples/ihe_pdqm_package as pdqm;
 import ballerina/log;
+import healthcare_samples/client_registry.handlers;
 
 // ============================================================
 // DATABASE CONFIGURATION
@@ -24,7 +25,7 @@ configurable string dbPassword = ?;
 configurable string dbType = "h2";
 
 // Database provider — selected via factory based on dbType
-final DatabaseProvider dbProvider = check getDatabaseProvider(dbType);
+final handlers:DatabaseProvider dbProvider = check handlers:getDatabaseProvider(dbType);
 
 // Database client - initialized on module load
 final jdbc:Client dbClient = check new (
@@ -1139,6 +1140,11 @@ isolated function identifierExists(string system, string value) returns boolean|
 # + jsonStr - The JSON string containing patient data
 # + return - A PDQmPatient object on success, or an error on failure
 isolated function parsePatient(string jsonStr) returns pdqm:PDQmPatient|error {
+    pdqm:PDQmPatient|error result = jsonStr.fromJsonStringWithType(pdqm:PDQmPatient);
+    if result is pdqm:PDQmPatient {
+        return result;
+    }
+    // Fallback: two-step parse (handles some JSON structures better in certain runtime versions)
     json patientJson = check jsonStr.fromJsonString();
     return patientJson.cloneWithType();
 }
@@ -2133,7 +2139,10 @@ isolated function addCRIdentifier(pdqm:PDQmPatient newPatient, string value)
     // Convert back to PDQmPatient
     pdqm:PDQmPatient|error updatedPatient = updatedJson.cloneWithType();
     if updatedPatient is error {
-        return updatedPatient;
+        // cloneWithType can fail for patients with complex FHIR fields (e.g. Extension choice types).
+        // Fall back to the original patient so the caller can still store the record.
+        log:printWarn("addCRIdentifier: cloneWithType failed — storing patient without CR identifier in resource JSON", updatedPatient);
+        return newPatient;
     }
 
     return updatedPatient;
