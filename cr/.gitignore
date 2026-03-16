@@ -23,6 +23,7 @@ config.toml
 .vscode/
 .idea/
 *.iml
+.claude/
 
 # OS
 .DS_Store
