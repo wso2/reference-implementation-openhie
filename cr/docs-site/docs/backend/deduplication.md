@@ -107,11 +107,11 @@ Each new pair is scored using the configured matching algorithms and field weigh
 | Field | Default Weight | Default Algorithm |
 |-------|----------------|-------------------|
 | `identifier` | 0.30 | `exact` |
-| `family` | 0.20 | `soundex` |
-| `given` | 0.15 | `soundex` |
+| `family` | 0.20 | `exact` |
+| `given` | 0.15 | `exact` |
 | `birthDate` | 0.20 | `exact` |
 | `gender` | 0.05 | `exact` |
-| `phone` | 0.05 | `levenshtein` |
+| `phone` | 0.05 | `exact` |
 | `postalCode` | 0.05 | `exact` |
 
 Score = Σ (field_score × field_weight). Scores range from 0.0 to 1.0.
@@ -120,7 +120,7 @@ Results are stored in `dedup_compared_pairs`.
 
 ### Step 4 — Build Groups from All Scored Pairs
 
-All pairs with `score >= dedupThreshold` (default 0.50) are loaded:
+All pairs with `score >= dedupThreshold` (default 0.45) are loaded:
 
 - If the pair has an active rejection in `dedup_pair_decisions` → **skip**
 - Otherwise → **Union-Find**: merge the roots of A and B

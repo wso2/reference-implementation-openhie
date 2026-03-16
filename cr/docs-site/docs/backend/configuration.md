@@ -16,6 +16,7 @@ auditEnabled = true
 sourceObserverName = "client-registry"
 
 # Database
+# dbType = "h2"          # "h2" (default, embedded) or "postgresql"
 dbUrl = "jdbc:h2:file:./data/mpi;AUTO_SERVER=TRUE"
 dbUser = "sa"
 dbPassword = ""
@@ -25,7 +26,7 @@ baseUrl = "http://localhost:9090/fhir/r4"
 
 # Matching thresholds
 matchThreshold = 0.25       # minimum score for $match endpoint results
-dedupThreshold = 0.50       # minimum score for dedup grouping
+dedupThreshold = 0.45       # minimum score for dedup grouping
 
 [gradeThresholds]
 certain = 0.95              # >= 0.95 = certain match
@@ -38,12 +39,12 @@ algorithm = "exact"
 
 [fields.family]
 weight = 0.20
-algorithm = "soundex"
+algorithm = "exact"
 levenshteinThreshold = 0.80
 
 [fields.given]
 weight = 0.15
-algorithm = "soundex"
+algorithm = "exact"
 levenshteinThreshold = 0.80
 
 [fields.birthDate]
@@ -56,7 +57,7 @@ algorithm = "exact"
 
 [fields.phone]
 weight = 0.05
-algorithm = "levenshtein"
+algorithm = "exact"
 
 [fields.postalCode]
 weight = 0.05
@@ -75,9 +76,10 @@ maxCandidatesPerMatch = 1000
 | `auditServiceUrl` | `http://localhost:9093` | URL of the audit service |
 | `auditEnabled` | `true` | Set to `false` to disable audit event emission |
 | `sourceObserverName` | `client-registry` | Source observer name in AuditEvent resources |
-| `dbUrl` | `jdbc:h2:file:./data/mpi;AUTO_SERVER=TRUE` | H2 JDBC URL. `AUTO_SERVER=TRUE` allows concurrent connections. |
-| `dbUser` | `sa` | H2 database username |
-| `dbPassword` | `""` | H2 database password (empty by default) |
+| `dbType` | `h2` | Database backend: `"h2"` (embedded, no setup) or `"postgresql"` |
+| `dbUrl` | `jdbc:h2:file:./data/mpi;AUTO_SERVER=TRUE` | JDBC URL for the database. For H2, `AUTO_SERVER=TRUE` allows concurrent connections. For PostgreSQL, use `jdbc:postgresql://host:5432/db`. |
+| `dbUser` | `sa` | Database username |
+| `dbPassword` | `""` | Database password (empty by default for H2) |
 | `baseUrl` | `http://localhost:9090/fhir/r4` | Self-referencing base URL used in FHIR responses |
 
 ## Matching Thresholds
@@ -85,7 +87,7 @@ maxCandidatesPerMatch = 1000
 | Key | Default | Description |
 |-----|---------|-------------|
 | `matchThreshold` | `0.25` | Minimum score for results returned by `$match` (ITI-119) |
-| `dedupThreshold` | `0.50` | Minimum score for a pair to be included in dedup grouping |
+| `dedupThreshold` | `0.45` | Minimum score for a pair to be included in dedup grouping |
 | `gradeThresholds.certain` | `0.95` | Score threshold for "certain" match grade |
 | `gradeThresholds.probable` | `0.80` | Score threshold for "probable" match grade |
 | `gradeThresholds.possible` | `0.60` | Score threshold for "possible" match grade |
