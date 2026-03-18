@@ -1,0 +1,59 @@
+# Test Configuration
+auditServiceUrl = "http://localhost:9096"
+auditEnabled = true
+sourceObserverName = "client-registry-test"
+
+# # Database type: "h2" (default, embedded) or "postgresql"
+# dbType = "h2"
+
+# # --- H2 (default, no external server needed) ---
+# dbUrl = "jdbc:h2:file:./data/cr-db"
+# dbUser = "sa"
+# dbPassword = ""
+
+# --- PostgreSQL (start with: docker-compose -f cr/docker-compose.yml up -d) ---
+dbType     = "postgresql"
+dbUrl      = "jdbc:postgresql://localhost:5432/cr_db"
+dbUser     = "postgres"
+dbPassword = "postgres"
+
+baseUrl = "http://localhost:9090/fhir/r4"
+
+# Matching Configuration (defaults)
+matchThreshold = 0.25
+dedupThreshold = 0.45
+
+[gradeThresholds]
+certain = 0.95
+probable = 0.80
+possible = 0.60
+
+[fields.identifier]
+weight = 0.30
+algorithm = "exact"
+
+[fields.family]
+weight = 0.20
+algorithm = "exact"
+levenshteinThreshold = 0.80
+
+[fields.given]
+weight = 0.15
+algorithm = "exact"
+levenshteinThreshold = 0.80
+
+[fields.birthDate]
+weight = 0.20
+algorithm = "exact"
+
+[fields.gender]
+weight = 0.05
+algorithm = "exact"
+
+[fields.phone]
+weight = 0.05
+algorithm = "exact"
+
+[fields.postalCode]
+weight = 0.05
+algorithm = "exact"
