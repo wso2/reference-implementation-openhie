@@ -349,6 +349,44 @@ function testMatchEntriesHaveSearchMode() returns error? {
     }
 }
 
+// 5b. $match Bundle entries must have search.extension with match-grade (ITI-119 supplement)
+@test:Config {groups: ["iti119", "structure"]}
+function testMatchEntriesHaveMatchGradeExtension() returns error? {
+    json params = buildMatchParams({
+        "resourceType": "Patient",
+        "identifier": [{"system": "http://moh.gov.lk/nic", "value": "200012345678"}],
+        "name": [{"family": "Silva", "given": ["Maria", "Fernanda"]}],
+        "gender": "female",
+        "birthDate": "2000-06-15"
+    });
+
+    http:Response response = check matchTestClient->post("/Patient/$match", params, {
+        "Authorization": string `Bearer ${matchAdminToken}`,
+        "Content-Type": "application/fhir+json"
+    });
+
+    json body = check response.getJsonPayload();
+    json|error entries = body.entry;
+
+    if entries is json[] && entries.length() > 0 {
+        json firstEntry = entries[0];
+        json|error extensions = firstEntry.search.extension;
+        test:assertFalse(extensions is error,
+            "Each entry must have search.extension for match-grade");
+        if extensions is json[] && extensions.length() > 0 {
+            json ext = extensions[0];
+            test:assertEquals(check ext.url,
+                "http://hl7.org/fhir/StructureDefinition/match-grade",
+                "Extension URL must be the match-grade StructureDefinition");
+            string grade = check (check ext.valueCode).cloneWithType();
+            test:assertTrue(
+                grade == "certain" || grade == "probable" ||
+                grade == "possible" || grade == "certainly-not",
+                string `match-grade valueCode must be a valid grade, got: ${grade}`);
+        }
+    }
+}
+
 // 6. $match response Content-Type must be JSON
 @test:Config {groups: ["iti119", "structure"]}
 function testMatchResponseContentType() returns error? {

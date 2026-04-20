@@ -1236,7 +1236,7 @@ isolated function getGiven(pdqm:PDQmPatient patient) returns string? {
     if names is r4:HumanName[] && names.length() > 0 {
         string[]? given = names[0].given;
         if given is string[] && given.length() > 0 {
-            return given[0];
+            return string:'join(" ", ...given);
         }
     }
     return ();

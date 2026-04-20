@@ -150,15 +150,24 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             finalMatches = certain;
         }
 
-        // Build Bundle
-        r4:BundleEntry[] entries = [];
+        // Build Bundle — entries typed as json[] to carry the match-grade extension
+        // on search (r4:BundleEntrySearch is a closed record without extension).
+        json[] entries = [];
         foreach MatchResult m in finalMatches {
+            json|error patientAsJson = m.patient.cloneWithType(json);
+            json patientData = patientAsJson is json ? patientAsJson : {};
             entries.push({
-                fullUrl: string `${baseUrl}/Patient/${m.patient.id ?: ""}`,
-                'resource: m.patient,
-                search: {
-                    mode: "match",
-                    score: m.score
+                "fullUrl": string `${baseUrl}/Patient/${m.patient.id ?: ""}`,
+                "resource": patientData,
+                "search": {
+                    "mode": "match",
+                    "score": m.score,
+                    "extension": [
+                        {
+                            "url": "http://hl7.org/fhir/StructureDefinition/match-grade",
+                            "valueCode": m.matchGrade
+                        }
+                    ]
                 }
             });
         }
@@ -169,11 +178,11 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         auditMatch(agentName, entries.length(), true);
 
         return <http:Ok>{body: {
-            resourceType: "Bundle",
-            id: uuid:createType1AsString(),
-            'type: "searchset",
-            total: entries.length(),
-            entry: entries
+            "resourceType": "Bundle",
+            "id": uuid:createType1AsString(),
+            "type": "searchset",
+            "total": entries.length(),
+            "entry": entries
         }};
     }
 
