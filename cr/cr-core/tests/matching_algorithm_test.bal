@@ -7,7 +7,7 @@
 // These are pure unit tests — no running service required.
 
 import ballerina/test;
-import healthcare_samples/ihe_pdqm_package as pdqm;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 import ballerinax/health.fhir.r4;
 
 // ============================================================
@@ -519,11 +519,10 @@ function testAlgoJaroWinklerHighThresholdFail() {
 }
 
 @test:Config {}
-function testAlgoUnknownFallsBackToExact() {
-    // Unknown algorithm name falls back to exact match
-    FieldConfig cfg = {weight: 0.20d, algorithm: "fuzzy"};
-    test:assertEquals(compareField("Smith", "Smith", cfg), 1.0d);
-    test:assertEquals(compareField("Smith", "Jones", cfg), 0.0d);
+function testValidateFieldAlgorithmRejectsUnknown() {
+    // validateFieldAlgorithm must return an error for unsupported algorithm names
+    error? result = validateFieldAlgorithm("family", "fuzzy");
+    test:assertTrue(result is error, msg = "Expected error for unknown algorithm 'fuzzy'");
 }
 
 // ============================================================

@@ -89,7 +89,7 @@ export function useMatchGroups() {
    * Approve a match group: mark subsumed patients as inactive via ITI-104 Resolve Duplicate.
    * The surviving patient is patients[0]; all others are subsumed.
    */
-  const approveGroup = useCallback(async (groupId: string, resolvedBy: string) => {
+  const approveGroup = useCallback(async (groupId: string, resolvedBy: string, survivingIndex = 0) => {
     const group = matchGroups.find((g) => g.id === groupId);
     if (!group || group.patients.length < 2) return;
 
@@ -97,11 +97,11 @@ export function useMatchGroups() {
     setMergeError(null);
 
     try {
-      const survivingPatient = group.patients[0];
+      const survivingPatient = group.patients[survivingIndex] ?? group.patients[0];
       const survivingId = survivingPatient.identifier?.[0];
       if (!survivingId) throw new Error('Surviving patient has no identifier');
 
-      const subsumedPatients = group.patients.slice(1);
+      const subsumedPatients = group.patients.filter((_, i) => i !== (survivingIndex < group.patients.length ? survivingIndex : 0));
       await Promise.all(
         subsumedPatients.map((p) =>
           resolvePatient(p, {
@@ -178,18 +178,18 @@ export function useMatchGroups() {
    * Merge a subset of patients within a group, then remove merged patients from group.
    * patients[0] of the subset is the surviving patient; rest are subsumed.
    */
-  const mergeSubset = useCallback(async (groupId: string, patientsToMerge: FhirPatient[], resolvedBy: string) => {
+  const mergeSubset = useCallback(async (groupId: string, patientsToMerge: FhirPatient[], resolvedBy: string, survivingIndex = 0) => {
     if (patientsToMerge.length < 2) return;
 
     setMerging(true);
     setMergeError(null);
 
     try {
-      const survivingPatient = patientsToMerge[0];
+      const survivingPatient = patientsToMerge[survivingIndex] ?? patientsToMerge[0];
       const survivingId = survivingPatient.identifier?.[0];
       if (!survivingId) throw new Error('Surviving patient has no identifier');
 
-      const subsumedPatients = patientsToMerge.slice(1);
+      const subsumedPatients = patientsToMerge.filter((_, i) => i !== (survivingIndex < patientsToMerge.length ? survivingIndex : 0));
       await Promise.all(
         subsumedPatients.map((p) =>
           resolvePatient(p, {

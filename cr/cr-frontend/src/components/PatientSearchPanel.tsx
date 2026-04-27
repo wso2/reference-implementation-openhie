@@ -15,6 +15,7 @@ import {
 } from '@wso2/oxygen-ui';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import type { ListPatientsParams } from '../types';
+import { getPreferences } from '../hooks/useUserPreferences';
 
 interface SearchFields {
   given: string;
@@ -23,6 +24,7 @@ interface SearchFields {
   birthdate: string;
   city: string;
   active: string;
+  identifier: string;
 }
 
 const EMPTY: SearchFields = {
@@ -32,6 +34,7 @@ const EMPTY: SearchFields = {
   birthdate: '',
   city: '',
   active: 'true',
+  identifier: '',
 };
 
 interface Props {
@@ -52,6 +55,11 @@ export default function PatientSearchPanel({ onSearch }: Props) {
     if (fields.gender)          filters.gender    = fields.gender;
     if (fields.birthdate)       filters.birthdate = fields.birthdate;
     if (fields.city.trim())     filters.city      = fields.city.trim();
+    if (fields.identifier.trim()) {
+      const { identifierSystemBaseUrl } = getPreferences();
+      const id = fields.identifier.trim();
+      filters.identifier = identifierSystemBaseUrl ? `${identifierSystemBaseUrl}|${id}` : id;
+    }
     filters.active = fields.active === 'true';
     onSearch(filters);
   };
@@ -141,6 +149,16 @@ export default function PatientSearchPanel({ onSearch }: Props) {
                 label="City"
                 value={fields.city}
                 onChange={set('city')}
+                onKeyDown={handleKeyDown}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Patient ID"
+                value={fields.identifier}
+                onChange={set('identifier')}
                 onKeyDown={handleKeyDown}
               />
             </Grid>

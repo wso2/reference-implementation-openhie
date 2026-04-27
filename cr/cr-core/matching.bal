@@ -6,7 +6,7 @@
 // Implements Levenshtein distance, Soundex phonetic matching,
 // and a configurable scoring engine for patient deduplication.
 
-import healthcare_samples/ihe_pdqm_package as pdqm;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 
 // ============================================================
 // CONFIGURABLE TYPES
@@ -18,9 +18,11 @@ type GradeThresholds readonly & record {|
     decimal possible;
 |};
 
+type Algorithm "exact"|"levenshtein"|"soundex"|"jarowinkler";
+
 type FieldConfig readonly & record {|
     decimal weight;
-    string algorithm;                // "exact" | "levenshtein" | "soundex" | "jarowinkler"
+    Algorithm algorithm;
     decimal levenshteinThreshold?;   // similarity cutoff for levenshtein (default 0.80)
     decimal jaroWinklerThreshold?;   // similarity cutoff for jarowinkler (default 0.85)
     decimal jaroWinklerPrefixScale?; // prefix scaling factor p (default 0.1, capped at 0.25)
@@ -36,6 +38,11 @@ type FieldsConfig readonly & record {|
     FieldConfig postalCode;
 |};
 
+type MatchingConfig readonly & record {|
+    GradeThresholds gradeThresholds;
+    FieldsConfig fields;
+|};
+
 // ============================================================
 // CONFIGURABLE DECLARATIONS (overridden via config.toml)
 // ============================================================
@@ -43,21 +50,115 @@ type FieldsConfig readonly & record {|
 configurable decimal matchThreshold = 0.25d;
 configurable decimal dedupThreshold = 0.60d;
 
-configurable GradeThresholds gradeThresholds = {
-    certain: 0.95d,
-    probable: 0.80d,
-    possible: 0.60d
+configurable MatchingConfig matchingConfig = {
+    gradeThresholds: {
+        certain: 0.95d,
+        probable: 0.80d,
+        possible: 0.60d
+    },
+    fields: {
+        identifier: {weight: 0.30d, algorithm: "exact"},
+        family: {weight: 0.20d, algorithm: "exact"},
+        given: {weight: 0.15d, algorithm: "exact"},
+        birthDate: {weight: 0.20d, algorithm: "exact"},
+        gender: {weight: 0.05d, algorithm: "exact"},
+        phone: {weight: 0.05d, algorithm: "exact"},
+        postalCode: {weight: 0.05d, algorithm: "exact"}
+    }
 };
 
-configurable FieldsConfig fields = {
-    identifier: {weight: 0.30d, algorithm: "exact"},
-    family: {weight: 0.20d, algorithm: "exact"},
-    given: {weight: 0.15d, algorithm: "exact"},
-    birthDate: {weight: 0.20d, algorithm: "exact"},
-    gender: {weight: 0.05d, algorithm: "exact"},
-    phone: {weight: 0.05d, algorithm: "exact"},
-    postalCode: {weight: 0.05d, algorithm: "exact"}
-};
+# Validate the MatchingConfig at application startup.
+# Checks each field's algorithm, weight range [0.0, 1.0], total weight sum (≤ 1.0),
+# each gradeThreshold range [0.0, 1.0], and strictly descending order (certain > probable > possible).
+# + cfg - The loaded MatchingConfig to validate
+# + return - An error naming the offending field or threshold, or nil if all checks pass
+isolated function validateFieldsConfig(MatchingConfig cfg) returns error? {
+    FieldsConfig f = cfg.fields;
+    check validateFieldAlgorithm("identifier", f.identifier.algorithm);
+    check validateFieldAlgorithm("family", f.family.algorithm);
+    check validateFieldAlgorithm("given", f.given.algorithm);
+    check validateFieldAlgorithm("birthDate", f.birthDate.algorithm);
+    check validateFieldAlgorithm("gender", f.gender.algorithm);
+    check validateFieldAlgorithm("phone", f.phone.algorithm);
+    check validateFieldAlgorithm("postalCode", f.postalCode.algorithm);
+
+    check validateFieldThresholds("identifier", f.identifier);
+    check validateFieldThresholds("family", f.family);
+    check validateFieldThresholds("given", f.given);
+    check validateFieldThresholds("birthDate", f.birthDate);
+    check validateFieldThresholds("gender", f.gender);
+    check validateFieldThresholds("phone", f.phone);
+    check validateFieldThresholds("postalCode", f.postalCode);
+
+    map<decimal> fieldWeights = {
+        "identifier": f.identifier.weight,
+        "family": f.family.weight,
+        "given": f.given.weight,
+        "birthDate": f.birthDate.weight,
+        "gender": f.gender.weight,
+        "phone": f.phone.weight,
+        "postalCode": f.postalCode.weight
+    };
+    foreach var [name, weight] in fieldWeights.entries() {
+        if weight < 0.0d || weight > 1.0d {
+            return error("field '" + name + "' weight " + weight.toString() + " is out of range [0.0, 1.0]");
+        }
+    }
+
+    decimal totalWeight = f.identifier.weight + f.family.weight + f.given.weight
+        + f.birthDate.weight + f.gender.weight + f.phone.weight + f.postalCode.weight;
+    if totalWeight > 1.0d {
+        return error("total field weight sum " + totalWeight.toString() + " exceeds 1.0");
+    }
+
+    GradeThresholds gt = cfg.gradeThresholds;
+    if gt.certain < 0.0d || gt.certain > 1.0d {
+        return error("gradeThresholds.certain value " + gt.certain.toString() + " is out of range [0.0, 1.0]");
+    }
+    if gt.probable < 0.0d || gt.probable > 1.0d {
+        return error("gradeThresholds.probable value " + gt.probable.toString() + " is out of range [0.0, 1.0]");
+    }
+    if gt.possible < 0.0d || gt.possible > 1.0d {
+        return error("gradeThresholds.possible value " + gt.possible.toString() + " is out of range [0.0, 1.0]");
+    }
+
+    if gt.certain <= gt.probable {
+        return error("gradeThresholds.certain (" + gt.certain.toString()
+            + ") must be greater than gradeThresholds.probable (" + gt.probable.toString() + ")");
+    }
+    if gt.probable <= gt.possible {
+        return error("gradeThresholds.probable (" + gt.probable.toString()
+            + ") must be greater than gradeThresholds.possible (" + gt.possible.toString() + ")");
+    }
+}
+
+isolated function validateFieldAlgorithm(string fieldName, string algorithm) returns error? {
+    match algorithm {
+        "exact"|"levenshtein"|"soundex"|"jarowinkler" => {}
+        _ => {
+            return error("Unsupported algorithm '" + algorithm + "' for fields." + fieldName
+                + ". Accepted values: exact, levenshtein, soundex, jarowinkler");
+        }
+    }
+}
+
+isolated function validateFieldThresholds(string fieldName, FieldConfig fc) returns error? {
+    decimal? lev = fc.levenshteinThreshold;
+    if lev != () && (lev < 0.0d || lev > 1.0d) {
+        return error("fields." + fieldName + " levenshteinThreshold " + lev.toString()
+            + " is out of range [0.0, 1.0]");
+    }
+    decimal? jt = fc.jaroWinklerThreshold;
+    if jt != () && (jt < 0.0d || jt > 1.0d) {
+        return error("fields." + fieldName + " jaroWinklerThreshold " + jt.toString()
+            + " is out of range [0.0, 1.0]");
+    }
+    decimal? ps = fc.jaroWinklerPrefixScale;
+    if ps != () && (ps < 0.0d || ps > 0.25d) {
+        return error("fields." + fieldName + " jaroWinklerPrefixScale " + ps.toString()
+            + " is out of range [0.0, 0.25]");
+    }
+}
 
 // ============================================================
 // BLOCKING CONFIGURATION
@@ -450,6 +551,9 @@ isolated function jaroWinklerSimilarity(string a, string b, decimal prefixScale)
 # + config - Field configuration specifying algorithm and parameters
 # + return - Similarity score (1.0 = match, 0.0 = no match)
 isolated function compareField(string a, string b, FieldConfig config) returns decimal {
+    if a.trim().length() == 0 || b.trim().length() == 0 {
+        return 0.0d;
+    }
     match config.algorithm {
         "exact" => {
             return a.toLowerAscii() == b.toLowerAscii() ? 1.0d : 0.0d;
@@ -469,8 +573,8 @@ isolated function compareField(string a, string b, FieldConfig config) returns d
             return similarity >= threshold ? similarity : 0.0d;
         }
         _ => {
-            // Unknown algorithm — fall back to exact
-            return a.toLowerAscii() == b.toLowerAscii() ? 1.0d : 0.0d;
+            panic error("BUG: unsupported algorithm '" + config.algorithm
+                + "' passed to compareField — should have been caught by validateFieldsConfig");
         }
     }
 }
@@ -486,17 +590,30 @@ isolated function compareField(string a, string b, FieldConfig config) returns d
 isolated function calculateScore(pdqm:PDQmPatient input, pdqm:PDQmPatient candidate) returns decimal {
     decimal score = 0.0d;
 
-    // --- Identifier (always exact — system+value pair matching) ---
+    // --- Identifier (system+value pair matching via configured algorithm) ---
     boolean identifierMatched = false;
     foreach pdqm:PDQmPatientIdentifier inId in input.identifier {
         if identifierMatched {
             break;
         }
+        string? inSystem = inId.system;
+        string? inValue = inId.value;
+        if inSystem is () || inValue is () {
+            continue;
+        }
         foreach pdqm:PDQmPatientIdentifier candId in candidate.identifier {
-            if inId.system == candId.system && inId.value == candId.value {
-                score += fields.identifier.weight;
-                identifierMatched = true;
-                break;
+            string? candSystem = candId.system;
+            string? candValue = candId.value;
+            if candSystem is () || candValue is () {
+                continue;
+            }
+            if inSystem == candSystem {
+                decimal sim = compareField(inValue, candValue, matchingConfig.fields.identifier);
+                if sim > 0.0d {
+                    score += matchingConfig.fields.identifier.weight * sim;
+                    identifierMatched = true;
+                    break;
+                }
             }
         }
     }
@@ -505,44 +622,44 @@ isolated function calculateScore(pdqm:PDQmPatient input, pdqm:PDQmPatient candid
     string? inFamily = getFamily(input);
     string? candFamily = getFamily(candidate);
     if inFamily is string && candFamily is string {
-        decimal sim = compareField(inFamily, candFamily, fields.family);
-        score += fields.family.weight * sim;
+        decimal sim = compareField(inFamily, candFamily, matchingConfig.fields.family);
+        score += matchingConfig.fields.family.weight * sim;
     }
 
     // --- Given name ---
     string? inGiven = getGiven(input);
     string? candGiven = getGiven(candidate);
     if inGiven is string && candGiven is string {
-        decimal sim = compareField(inGiven, candGiven, fields.given);
-        score += fields.given.weight * sim;
+        decimal sim = compareField(inGiven, candGiven, matchingConfig.fields.given);
+        score += matchingConfig.fields.given.weight * sim;
     }
 
     // --- Birth date ---
     if input.birthDate is string && candidate.birthDate is string {
-        decimal sim = compareField(<string>input.birthDate, <string>candidate.birthDate, fields.birthDate);
-        score += fields.birthDate.weight * sim;
+        decimal sim = compareField(<string>input.birthDate, <string>candidate.birthDate, matchingConfig.fields.birthDate);
+        score += matchingConfig.fields.birthDate.weight * sim;
     }
 
     // --- Gender ---
     if input.gender is string && candidate.gender is string {
-        decimal sim = compareField(<string>input.gender, <string>candidate.gender, fields.gender);
-        score += fields.gender.weight * sim;
+        decimal sim = compareField(<string>input.gender, <string>candidate.gender, matchingConfig.fields.gender);
+        score += matchingConfig.fields.gender.weight * sim;
     }
 
     // --- Phone (normalize before comparison to handle different formatting) ---
     string? inPhone = getTelecom(input, "phone");
     string? candPhone = getTelecom(candidate, "phone");
     if inPhone is string && candPhone is string {
-        decimal sim = compareField(canonicalizePhone(inPhone), canonicalizePhone(candPhone), fields.phone);
-        score += fields.phone.weight * sim;
+        decimal sim = compareField(canonicalizePhone(inPhone), canonicalizePhone(candPhone), matchingConfig.fields.phone);
+        score += matchingConfig.fields.phone.weight * sim;
     }
 
     // --- Postal code ---
     string? inPostal = getAddressField(input, "postalCode");
     string? candPostal = getAddressField(candidate, "postalCode");
     if inPostal is string && candPostal is string {
-        decimal sim = compareField(inPostal, candPostal, fields.postalCode);
-        score += fields.postalCode.weight * sim;
+        decimal sim = compareField(inPostal, candPostal, matchingConfig.fields.postalCode);
+        score += matchingConfig.fields.postalCode.weight * sim;
     }
 
     return score > 1.0d ? 1.0d : score;
@@ -552,13 +669,13 @@ isolated function calculateScore(pdqm:PDQmPatient input, pdqm:PDQmPatient candid
 # + score - The decimal score to evaluate
 # + return - Match grade: "certain", "probable", "possible", or "certainly-not"
 isolated function getMatchGrade(decimal score) returns string {
-    if score >= gradeThresholds.certain {
+    if score >= matchingConfig.gradeThresholds.certain {
         return "certain";
     }
-    if score >= gradeThresholds.probable {
+    if score >= matchingConfig.gradeThresholds.probable {
         return "probable";
     }
-    if score >= gradeThresholds.possible {
+    if score >= matchingConfig.gradeThresholds.possible {
         return "possible";
     }
     return "certainly-not";

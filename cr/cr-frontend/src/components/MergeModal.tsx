@@ -35,6 +35,8 @@ interface Props {
   group: MatchGroup | null;
   selections: Record<string, number>;
   onSelectionChange: (field: string, idx: number) => void;
+  survivingIndex: number;
+  onSurvivingIndexChange: (idx: number) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -43,6 +45,8 @@ export default function MergeModal({
   group,
   selections,
   onSelectionChange,
+  survivingIndex,
+  onSurvivingIndexChange,
   onConfirm,
   onCancel,
 }: Props) {
@@ -62,9 +66,9 @@ export default function MergeModal({
     });
   });
 
-  const identifierFieldDefs: FieldDef[] = allSystems.map((sys) => ({
+  const identifierFieldDefs: FieldDef[] = allSystems.map((sys, i) => ({
     key: `identifier__${sys}`,
-    label: abbreviateSystem(sys === '__bare__' ? null : sys),
+    label: `Identifier ${i + 1}`,
     getValue: (patient) => {
       const match = (patient.identifier || []).find(
         (id) => (id.system ?? '__bare__') === sys
@@ -90,6 +94,10 @@ export default function MergeModal({
         `${p.address?.[0]?.line?.join(', ') || ''}, ${p.address?.[0]?.city || ''}`,
     },
   ];
+
+  const cruIdKey = identifierFieldDefs.find((f) =>
+    group.patients.some((p) => f.getValue(p).startsWith('Patient/'))
+  )?.key ?? null;
 
   const mergedPreview: Record<string, string> = {};
   fieldDefs.forEach((f) => {
@@ -235,7 +243,10 @@ export default function MergeModal({
                         <Radio
                           size="small"
                           checked={isSelected}
-                          onChange={() => onSelectionChange(field.key, idx)}
+                          onChange={() => {
+                            onSelectionChange(field.key, idx);
+                            if (field.key === cruIdKey) onSurvivingIndexChange(idx);
+                          }}
                           sx={{ p: 0 }}
                         />
                         <Typography noWrap sx={{ fontSize: 12 }}>
@@ -284,6 +295,14 @@ export default function MergeModal({
               </Box>
             </Box>
             <Box sx={{ px: 2, py: 1.5 }}>
+              <Box sx={{ py: 1, borderBottom: '1px solid #dcfce7' }}>
+                <Typography sx={{ fontSize: 10, color: 'success.main', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Surviving CRUID
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', fontFamily: 'monospace', mt: 0.25 }} noWrap>
+                  {group.patients[survivingIndex]?.id ?? '—'}
+                </Typography>
+              </Box>
               {fieldDefs.map((f) => (
                 <Box key={f.key} sx={{ py: 1, borderBottom: '1px solid #dcfce7' }}>
                   <Typography

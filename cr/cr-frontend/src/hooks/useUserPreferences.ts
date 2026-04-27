@@ -8,6 +8,7 @@ export const defaultPreferences: UserPreferences = {
   dateFormat: 'relative',
   auditAutoRefresh: true,
   auditRefreshInterval: 30,
+  identifierSystemBaseUrl: '',
 };
 
 /** Plain (non-React) helper to read preferences — safe to call inside hooks/intervals. */

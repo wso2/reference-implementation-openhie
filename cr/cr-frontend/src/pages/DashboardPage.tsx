@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [selectedGroup, setSelectedGroup] = useState<MatchGroup | null>(null);
   const [mergeSelections, setMergeSelections] = useState<Record<string, number>>({});
   const [mergePatients, setMergePatients] = useState<FhirPatient[] | null>(null);
+  const [survivingIndex, setSurvivingIndex] = useState(0);
 
   const filteredGroups = useMemo(() => {
     return matchGroups.filter((group) => {
@@ -63,6 +64,7 @@ export default function DashboardPage() {
   const openMergeModal = (group: MatchGroup) => {
     setSelectedGroup(group);
     setMergePatients(null);
+    setSurvivingIndex(0);
     const initialSelections: Record<string, number> = {};
     ['name', 'identifier', 'birthDate', 'gender', 'phone', 'email', 'address'].forEach((f) => {
       initialSelections[f] = 0;
@@ -79,12 +81,12 @@ export default function DashboardPage() {
     setMergePatients(null);
 
     if (patientsToMerge) {
-      await mergeSubset(groupId, patientsToMerge, user?.email || 'unknown');
+      await mergeSubset(groupId, patientsToMerge, user?.email || 'unknown', survivingIndex);
       if (!mergeError) {
         showNotification(`${patientsToMerge.length} records merged`);
       }
     } else {
-      await approveGroup(groupId, user?.email || 'unknown');
+      await approveGroup(groupId, user?.email || 'unknown', survivingIndex);
       if (!mergeError) {
         showNotification(
           `Match group approved \u2014 ${group?.patients?.length || 0} records merged`
@@ -107,6 +109,7 @@ export default function DashboardPage() {
     const tempGroup: MatchGroup = { ...group, patients: selectedPatients };
     setSelectedGroup(tempGroup);
     setMergePatients(selectedPatients);
+    setSurvivingIndex(0);
     const initialSelections: Record<string, number> = {};
     ['name', 'identifier', 'birthDate', 'gender', 'phone', 'email', 'address'].forEach((f) => {
       initialSelections[f] = 0;
@@ -222,6 +225,8 @@ export default function DashboardPage() {
           group={selectedGroup}
           selections={mergeSelections}
           onSelectionChange={(field, idx) => setMergeSelections({ ...mergeSelections, [field]: idx })}
+          survivingIndex={survivingIndex}
+          onSurvivingIndexChange={setSurvivingIndex}
           onConfirm={() => handleApprove(selectedGroup.id)}
           onCancel={() => {
             setMergeModalOpen(false);

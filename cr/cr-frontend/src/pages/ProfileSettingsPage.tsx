@@ -17,6 +17,7 @@ import {
   Switch,
   FormControlLabel,
   Alert,
+  TextField,
 } from '@wso2/oxygen-ui';
 import { User, Settings, Shield, LogOut, RotateCcw } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -193,6 +194,25 @@ export default function ProfileSettingsPage() {
                   <MenuItem value="absolute">Absolute (e.g. "Mar 3, 2026 14:30")</MenuItem>
                 </Select>
               </FormControl>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Patient Identifier
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                System base URL prepended to ID searches in <code>system|ID</code> format
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                label="System Base URL"
+                placeholder="e.g. http://example.org/fhir/sid/mrn"
+                value={preferences.identifierSystemBaseUrl ?? ''}
+                onChange={(e) => handlePreferenceChange('identifierSystemBaseUrl', e.target.value)}
+              />
             </CardContent>
           </Card>
 

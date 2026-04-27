@@ -4,7 +4,7 @@
 // blocking key computation, and the configurable scoring engine.
 
 import ballerina/test;
-import healthcare_samples/ihe_pdqm_package as pdqm;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 import ballerinax/health.fhir.r4;
 
 // ============================================================
@@ -155,10 +155,13 @@ function testCompareFieldSoundex() {
 }
 
 @test:Config {}
-function testCompareFieldUnknownFallsBackToExact() {
-    FieldConfig cfg = {weight: 0.20d, algorithm: "unknown_algo"};
-    test:assertEquals(compareField("abc", "abc", cfg), 1.0d);
-    test:assertEquals(compareField("abc", "xyz", cfg), 0.0d);
+function testCompareFieldEmptyStringReturnsZero() {
+    // Empty or blank fields must return 0.0 to avoid false matches
+    FieldConfig cfg = {weight: 0.20d, algorithm: "exact"};
+    test:assertEquals(compareField("", "Smith", cfg), 0.0d);
+    test:assertEquals(compareField("Smith", "", cfg), 0.0d);
+    test:assertEquals(compareField("", "", cfg), 0.0d);
+    test:assertEquals(compareField("  ", "Smith", cfg), 0.0d);
 }
 
 // ============================================================

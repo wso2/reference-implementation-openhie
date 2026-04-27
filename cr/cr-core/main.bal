@@ -11,12 +11,19 @@ import ballerina/log;
 import ballerina/uuid;
 import ballerinax/health.fhir.r4;
 import ballerinax/health.fhirr4;
-import healthcare_samples/ihe_pdqm_package as pdqm;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 
 configurable string baseUrl = ?;
 
 // Initialize database on startup
 function init() returns error? {
+    check validateFieldsConfig(matchingConfig);
+    if matchThreshold < 0.0d || matchThreshold > 1.0d {
+        return error("matchThreshold " + matchThreshold.toString() + " is out of range [0.0, 1.0]");
+    }
+    if dedupThreshold < 0.0d || dedupThreshold > 1.0d {
+        return error("dedupThreshold " + dedupThreshold.toString() + " is out of range [0.0, 1.0]");
+    }
     check initDatabase();
     int count = check getPatientCount();
     log:printInfo(string `MPI Service started. Database has ${count} patients.`);

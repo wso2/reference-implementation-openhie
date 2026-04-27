@@ -88,7 +88,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "ftp"
-version = "2.18.0"
+version = "2.18.1"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "data.csv"},
@@ -443,6 +443,20 @@ modules = [
 
 [[package]]
 org = "ballerinax"
+name = "health.fhir.r4.ihe.pdqm320"
+version = "1.0.0"
+dependencies = [
+	{org = "ballerina", name = "constraint"},
+	{org = "ballerina", name = "log"},
+	{org = "ballerinax", name = "health.fhir.r4"},
+	{org = "ballerinax", name = "health.fhir.r4.international401"}
+]
+modules = [
+	{org = "ballerinax", packageName = "health.fhir.r4.ihe.pdqm320", moduleName = "health.fhir.r4.ihe.pdqm320"}
+]
+
+[[package]]
+org = "ballerinax"
 name = "health.fhir.r4.international401"
 version = "4.0.3"
 dependencies = [
@@ -498,6 +512,7 @@ dependencies = [
 	{org = "ballerina", name = "task"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerina", name = "url"},
+	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "health.fhir.r4"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"},
 	{org = "ballerinax", name = "health.fhir.r4.ips"},
@@ -536,27 +551,13 @@ dependencies = [
 	{org = "ballerina", name = "time"},
 	{org = "ballerina", name = "uuid"},
 	{org = "ballerinax", name = "health.fhir.r4"},
+	{org = "ballerinax", name = "health.fhir.r4.ihe.pdqm320"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"},
 	{org = "ballerinax", name = "health.fhirr4"},
-	{org = "ballerinax", name = "java.jdbc"},
-	{org = "healthcare_samples", name = "ihe_pdqm_package"}
+	{org = "ballerinax", name = "java.jdbc"}
 ]
 modules = [
 	{org = "healthcare_samples", packageName = "client_registry", moduleName = "client_registry"},
 	{org = "healthcare_samples", packageName = "client_registry", moduleName = "client_registry.handlers"}
-]
-
-[[package]]
-org = "healthcare_samples"
-name = "ihe_pdqm_package"
-version = "1.0.0"
-dependencies = [
-	{org = "ballerina", name = "constraint"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerinax", name = "health.fhir.r4"},
-	{org = "ballerinax", name = "health.fhir.r4.international401"}
-]
-modules = [
-	{org = "healthcare_samples", packageName = "ihe_pdqm_package", moduleName = "ihe_pdqm_package"}
 ]
 

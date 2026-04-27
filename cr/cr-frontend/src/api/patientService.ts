@@ -28,6 +28,7 @@ export async function listPatients({ page = 1, pageSize = 20, ...filters }: List
   if (filters.given) query.append('given', filters.given);
   if (filters.gender) query.append('gender', filters.gender);
   if (filters.birthdate) query.append('birthdate', filters.birthdate);
+  if (filters.identifier) query.append('identifier', filters.identifier);
   if (filters.city) query.append('address-city', filters.city);
   if (filters.state) query.append('address-state', filters.state);
   if (filters.postalCode) query.append('address-postalcode', filters.postalCode);

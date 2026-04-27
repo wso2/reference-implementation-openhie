@@ -11,7 +11,7 @@ import ballerina/time;
 import ballerina/uuid;
 import ballerinax/java.jdbc;
 import ballerinax/health.fhir.r4;
-import healthcare_samples/ihe_pdqm_package as pdqm;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 import ballerina/log;
 import healthcare_samples/client_registry.handlers;
 
@@ -1497,7 +1497,7 @@ isolated function compareFields(pdqm:PDQmPatient a, pdqm:PDQmPatient b) returns 
     // family_name (uses configured algorithm)
     string? aFamily = getFamily(a);
     string? bFamily = getFamily(b);
-    if aFamily is string && bFamily is string && compareField(aFamily, bFamily, fields.family) > 0.0d {
+    if aFamily is string && bFamily is string && compareField(aFamily, bFamily, matchingConfig.fields.family) > 0.0d {
         matchedFields.push("family_name");
     } else {
         unmatchedFields.push("family_name");
@@ -1506,21 +1506,21 @@ isolated function compareFields(pdqm:PDQmPatient a, pdqm:PDQmPatient b) returns 
     // given_name (uses configured algorithm)
     string? aGiven = getGiven(a);
     string? bGiven = getGiven(b);
-    if aGiven is string && bGiven is string && compareField(aGiven, bGiven, fields.given) > 0.0d {
+    if aGiven is string && bGiven is string && compareField(aGiven, bGiven, matchingConfig.fields.given) > 0.0d {
         matchedFields.push("given_name");
     } else {
         unmatchedFields.push("given_name");
     }
 
     // birth_date (uses configured algorithm)
-    if a.birthDate is string && b.birthDate is string && compareField(<string>a.birthDate, <string>b.birthDate, fields.birthDate) > 0.0d {
+    if a.birthDate is string && b.birthDate is string && compareField(<string>a.birthDate, <string>b.birthDate, matchingConfig.fields.birthDate) > 0.0d {
         matchedFields.push("birth_date");
     } else {
         unmatchedFields.push("birth_date");
     }
 
     // gender (uses configured algorithm)
-    if a.gender is string && b.gender is string && compareField(<string>a.gender, <string>b.gender, fields.gender) > 0.0d {
+    if a.gender is string && b.gender is string && compareField(<string>a.gender, <string>b.gender, matchingConfig.fields.gender) > 0.0d {
         matchedFields.push("gender");
     } else {
         unmatchedFields.push("gender");
@@ -1529,7 +1529,7 @@ isolated function compareFields(pdqm:PDQmPatient a, pdqm:PDQmPatient b) returns 
     // phone (uses configured algorithm)
     string? aPhone = getTelecom(a, "phone");
     string? bPhone = getTelecom(b, "phone");
-    if aPhone is string && bPhone is string && compareField(aPhone, bPhone, fields.phone) > 0.0d {
+    if aPhone is string && bPhone is string && compareField(aPhone, bPhone, matchingConfig.fields.phone) > 0.0d {
         matchedFields.push("phone");
     } else {
         unmatchedFields.push("phone");
@@ -1556,7 +1556,7 @@ isolated function compareFields(pdqm:PDQmPatient a, pdqm:PDQmPatient b) returns 
     // postal_code (uses configured algorithm)
     string? aPostal = getAddressField(a, "postalCode");
     string? bPostal = getAddressField(b, "postalCode");
-    if aPostal is string && bPostal is string && compareField(aPostal, bPostal, fields.postalCode) > 0.0d {
+    if aPostal is string && bPostal is string && compareField(aPostal, bPostal, matchingConfig.fields.postalCode) > 0.0d {
         matchedFields.push("postal_code");
     } else {
         unmatchedFields.push("postal_code");

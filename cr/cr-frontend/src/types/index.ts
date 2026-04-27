@@ -164,6 +164,7 @@ export interface UserPreferences {
   dateFormat: DateFormat;
   auditAutoRefresh: boolean;
   auditRefreshInterval: number;
+  identifierSystemBaseUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
