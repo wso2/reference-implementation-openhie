@@ -19,41 +19,57 @@ dbPassword = "postgres"
 
 baseUrl = "http://localhost:9090/fhir/r4"
 
-# Matching Configuration (defaults)
-matchThreshold = 0.25
-dedupThreshold = 0.45
+# =============================================
+# Matching Configuration
+# =============================================
+# Algorithms: "exact", "levenshtein", "soundex", "jarowinkler"
+# To enable fuzzy matching, change algorithm per field (exact, levenshtein, soundex, jarowinkler).
+# jarowinkler optional params:
+#   jaroWinklerThreshold    - minimum similarity to count as match (default 0.85)
+#   jaroWinklerPrefixScale  - prefix bonus scaling factor (default 0.1, max 0.25)
 
-[gradeThresholds]
+matchThreshold = 0.25       # minimum score for $match endpoint
+dedupThreshold = 0.50       # minimum score for dedup grouping
+
+[matchingConfig.gradeThresholds]
 certain = 0.95
 probable = 0.80
 possible = 0.60
 
-[fields.identifier]
+[matchingConfig.fields.identifier]
 weight = 0.30
 algorithm = "exact"
 
-[fields.family]
+[matchingConfig.fields.family]
 weight = 0.20
-algorithm = "exact"
+algorithm = "soundex"
 levenshteinThreshold = 0.80
 
-[fields.given]
+[matchingConfig.fields.given]
 weight = 0.15
-algorithm = "exact"
+algorithm = "soundex"
 levenshteinThreshold = 0.80
 
-[fields.birthDate]
+[matchingConfig.fields.birthDate]
 weight = 0.20
 algorithm = "exact"
 
-[fields.gender]
+[matchingConfig.fields.gender]
 weight = 0.05
 algorithm = "exact"
 
-[fields.phone]
+[matchingConfig.fields.phone]
+weight = 0.05
+algorithm = "jarowinkler"
+
+[matchingConfig.fields.postalCode]
 weight = 0.05
 algorithm = "exact"
 
-[fields.postalCode]
-weight = 0.05
-algorithm = "exact"
+# =============================================
+# Blocking Configuration (performance tuning)
+# =============================================
+[blocking]
+enabled = true                    # false reverts to full-scan (for debugging)
+refreshBatchSize = 5000          # patients per blocking key refresh batch
+maxCandidatesPerMatch = 1000     # safety cap per $match query
