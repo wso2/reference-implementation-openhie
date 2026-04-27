@@ -4,12 +4,6 @@ name = "client_registry"
 version = "1.0.0"
 distribution = "2201.13.1"
 
-[[dependency]]
-org = "ballerinax"
-name = "health.fhir.r4.ihe.pdqm320"
-version = "1.0.0"
-repository = "local"
-
 # Database Drivers — both included so dbType can be switched at runtime
 [[platform.java17.dependency]]
 groupId = "com.h2database"
@@ -20,5 +14,4 @@ version = "2.2.224"
 groupId = "org.postgresql"
 artifactId = "postgresql"
 version = "42.7.4"
-
 

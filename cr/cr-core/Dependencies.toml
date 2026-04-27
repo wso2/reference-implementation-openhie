@@ -88,7 +88,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "ftp"
-version = "2.18.1"
+version = "2.19.0"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "data.csv"},
@@ -97,8 +97,7 @@ dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "task"},
-	{org = "ballerina", name = "time"}
+	{org = "ballerina", name = "task"}
 ]
 
 [[package]]
@@ -310,7 +309,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "sql"
-version = "1.17.1"
+version = "1.19.0"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -500,7 +499,7 @@ dependencies = [
 [[package]]
 org = "ballerinax"
 name = "health.fhirr4"
-version = "3.0.6"
+version = "3.0.8"
 dependencies = [
 	{org = "ballerina", name = "file"},
 	{org = "ballerina", name = "http"},
@@ -525,7 +524,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "java.jdbc"
-version = "1.14.1"
+version = "1.15.1"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
