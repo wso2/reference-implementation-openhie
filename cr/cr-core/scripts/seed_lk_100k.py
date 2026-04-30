@@ -163,16 +163,26 @@ def build_patient(idx: int, given: str, family: str, gender: str,
 
 
 def mutate_for_duplicate(patient: dict) -> dict:
-    """Return a variant of patient simulating a slightly different registration."""
+    """Return a realistic duplicate: always a NEW MRN (separate registration event),
+    NIC retained only 60 % of the time, plus one demographic variation."""
     import copy
     dup = copy.deepcopy(patient)
 
-    mutation = random.choice(["typo_given", "typo_family", "diff_phone",
-                               "diff_hospital", "diff_address", "missing_middle"])
+    # Every duplicate originates from a separate registration — always a new MRN,
+    # possibly at a different hospital.
+    hosp        = random.choice(HOSPITALS)
+    new_mrn     = rand_mrn(hosp[1], random.randint(1, 999_999))
+    nic_ids     = [i for i in dup["identifier"] if "nic" in i.get("system", "")]
+    if random.random() < 0.60 and nic_ids:
+        dup["identifier"] = [{"use": "official", "system": hosp[0], "value": new_mrn}] + nic_ids
+    else:
+        dup["identifier"] = [{"use": "official", "system": hosp[0], "value": new_mrn}]
+
+    # One additional demographic variation
+    mutation = random.choice(["typo_given", "typo_family", "diff_phone", "diff_address"])
 
     if mutation == "typo_given":
         g = dup["name"][0]["given"][0]
-        # swap two adjacent chars
         if len(g) >= 3:
             i = random.randint(0, len(g) - 2)
             g = g[:i] + g[i+1] + g[i] + g[i+2:]
@@ -188,24 +198,11 @@ def mutate_for_duplicate(patient: dict) -> dict:
     elif mutation == "diff_phone":
         dup["telecom"][0]["value"] = rand_phone()
 
-    elif mutation == "diff_hospital":
-        hosp = random.choice(HOSPITALS)
-        mrn  = rand_mrn(hosp[1], random.randint(10000, 99999))
-        # keep NIC if present, replace MRN only
-        dup["identifier"] = [i for i in dup["identifier"]
-                              if "nic" in i.get("system","")]
-        dup["identifier"].insert(0, {"use":"official","system":hosp[0],"value":mrn})
-
     elif mutation == "diff_address":
         city_tuple = random.choice(CITIES)
         dup["address"][0]["city"]       = city_tuple[0]
         dup["address"][0]["district"]   = city_tuple[1]
         dup["address"][0]["postalCode"] = city_tuple[2]
-
-    elif mutation == "missing_middle":
-        # remove NIC identifier (simulates clerk not entering it)
-        dup["identifier"] = [i for i in dup["identifier"]
-                              if "nic" not in i.get("system","")]
 
     return dup
 

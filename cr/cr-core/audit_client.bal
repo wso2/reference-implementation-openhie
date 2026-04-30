@@ -11,6 +11,7 @@ import ballerina/time;
 import ballerina/uuid;
 import ballerinax/health.fhir.r4;
 import ballerinax/health.fhir.r4.international401;
+import ballerinax/health.fhir.r4.ihe.pdqm320 as pdqm;
 
 // ============================================================
 // CONFIGURATION
@@ -48,6 +49,44 @@ isolated function sendAuditEvent(international401:AuditEvent auditEvent) {
         }
     } on fail error e {
         // Log but don't fail the main operation
+        log:printWarn("Exception sending audit event", 'error = e);
+    }
+}
+
+isolated function sendPdqmQueryAuditEvent(pdqm:AuditPdqmQuerySupplier auditEvent) {
+    if !auditEnabled {
+        return;
+    }
+    do {
+        string auditId = auditEvent.id is string ? <string>auditEvent.id : "";
+        http:Response|http:ClientError response = auditClient->post("/audits", auditEvent);
+        if response is http:ClientError {
+            log:printWarn("Failed to send audit event", 'error = response, auditId = auditId);
+        } else if response.statusCode >= 400 {
+            log:printWarn("Audit service returned error", statusCode = response.statusCode, auditId = auditId);
+        } else {
+            log:printDebug("Audit event sent successfully", auditId = auditId);
+        }
+    } on fail error e {
+        log:printWarn("Exception sending audit event", 'error = e);
+    }
+}
+
+isolated function sendPdqmMatchAuditEvent(pdqm:AuditPdqmMatchSupplier auditEvent) {
+    if !auditEnabled {
+        return;
+    }
+    do {
+        string auditId = auditEvent.id is string ? <string>auditEvent.id : "";
+        http:Response|http:ClientError response = auditClient->post("/audits", auditEvent);
+        if response is http:ClientError {
+            log:printWarn("Failed to send audit event", 'error = response, auditId = auditId);
+        } else if response.statusCode >= 400 {
+            log:printWarn("Audit service returned error", statusCode = response.statusCode, auditId = auditId);
+        } else {
+            log:printDebug("Audit event sent successfully", auditId = auditId);
+        }
+    } on fail error e {
         log:printWarn("Exception sending audit event", 'error = e);
     }
 }
@@ -124,35 +163,130 @@ public isolated function auditPatientRead(string patientId, string agentName, bo
     ]);
 }
 
-# Create audit event for Patient Search (ITI-78)
+# Create audit event for Patient Search (ITI-78) — IHE.PDQm.Query.Audit.Supplier profile
 #
-# + queryString - The search query parameters
-# + agentName - Name of the user/system performing the search
-# + resultCount - Number of results returned
+# + queryString - The URL query parameters (e.g. "family=Smith&given=John")
+# + agentName - Identity of the PDQm Consumer (requesting client)
+# + patientId - First matched patient ID, empty string when no results or on failure
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
-# + return - Configured audit event
-public isolated function auditPatientSearch(string queryString, string agentName, int resultCount, boolean success,
-        string reason = "") returns international401:AuditEvent {
-    string outcomeDesc = reason != "" ? reason : (success ? string `Search returned ${resultCount} result(s)` : "");
-    return buildAuditEvent("search-type", "E", success, outcomeDesc, agentName, [
-        getEntity("1", "24", string `Patient?${queryString}`)
-    ]);
+# + return - Configured ITI-78 Supplier audit event
+public isolated function auditPatientSearch(string queryString, string agentName, string patientId,
+        boolean success, string reason = "") returns pdqm:AuditPdqmQuerySupplier {
+    pdqm:AuditPdqmQuerySupplierSubtypeIti78 iti78Subtype = {};
+    pdqm:AuditPdqmQuerySupplierType auditType = {};
+
+    string base64Query = (string `Patient?${queryString}`).toBytes().toBase64();
+    pdqm:AuditPdqmQuerySupplierEntity queryEntity = {
+        'type: {system: "http://terminology.hl7.org/CodeSystem/audit-entity-type", code: "2", display: "System Object"},
+        role: {system: "http://terminology.hl7.org/CodeSystem/object-role", code: "24", display: "Query"},
+        query: base64Query
+    };
+    pdqm:AuditPdqmQuerySupplierEntity[] entities = [queryEntity];
+    if patientId != "" {
+        entities.push({
+            'type: {system: "http://terminology.hl7.org/CodeSystem/audit-entity-type", code: "1", display: "Person"},
+            role: {system: "http://terminology.hl7.org/CodeSystem/object-role", code: "1", display: "Patient"},
+            what: {reference: string `Patient/${patientId}`}
+        });
+    }
+
+    return {
+        id: uuid:createType1AsString(),
+        meta: {profile: [pdqm:PROFILE_BASE_AUDITPDQMQUERYSUPPLIER]},
+        'type: auditType,
+        subtype: [
+            iti78Subtype,
+            {system: "http://hl7.org/fhir/restful-interaction", code: "search", display: "search"}
+        ],
+        action: "E",
+        outcome: success ? "0" : "4",
+        outcomeDesc: reason != "" ? reason : (),
+        recorded: getCurrentTimestamp(),
+        agent: [
+            // PDQm Consumer — source of the request
+            {
+                'type: {coding: [{system: "http://dicom.nema.org/resources/ontology/DCM", code: "110153", display: "Source Role ID"}]},
+                who: {display: agentName},
+                requestor: false
+            },
+            // PDQm Supplier — our server receiving the request
+            {
+                'type: {coding: [{system: "http://dicom.nema.org/resources/ontology/DCM", code: "110152", display: "Destination Role ID"}]},
+                who: {display: baseUrl},
+                requestor: false,
+                network: {address: baseUrl, 'type: "5"}
+            }
+        ],
+        'source: {
+            observer: {display: sourceObserverName},
+            'type: [{system: "http://terminology.hl7.org/CodeSystem/security-source-type", code: "4", display: "Application Server"}]
+        },
+        entity: entities
+    };
 }
 
-# Create audit event for Patient Match (ITI-119)
+# Create audit event for Patient Match (ITI-119) — IHE.PDQm.Match.Audit.Supplier profile
 #
-# + agentName - Name of the user/system performing the match
-# + matchCount - Number of matches found
+# + agentName - Identity of the PDQm Consumer (requesting client)
+# + queryBody - JSON string of the Parameters resource sent in the $match request
+# + patientId - Matched patient ID, empty string when no match or on failure
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
-# + return - Configured audit event
-public isolated function auditPatientMatch(string agentName, int matchCount, boolean success, string reason = "")
-        returns international401:AuditEvent {
-    string outcomeDesc = reason != "" ? reason : (success ? string `Match returned ${matchCount} result(s)` : "");
-    return buildAuditEvent("operation", "E", success, outcomeDesc, agentName, [
-        getEntity("1", "24", "Patient/$match")
-    ]);
+# + return - Configured ITI-119 Supplier audit event
+public isolated function auditPatientMatch(string agentName, string queryBody, string patientId,
+        boolean success, string reason = "") returns pdqm:AuditPdqmMatchSupplier {
+    pdqm:AuditPdqmMatchSupplierSubtypeIti119 iti119Subtype = {};
+    pdqm:AuditPdqmMatchSupplierType auditType = {};
+
+    string base64Query = queryBody.toBytes().toBase64();
+    pdqm:AuditPdqmMatchSupplierEntity queryEntity = {
+        'type: {system: "http://terminology.hl7.org/CodeSystem/audit-entity-type", code: "2", display: "System Object"},
+        role: {system: "http://terminology.hl7.org/CodeSystem/object-role", code: "24", display: "Query"},
+        query: base64Query
+    };
+    pdqm:AuditPdqmMatchSupplierEntity[] entities = [queryEntity];
+    if patientId != "" {
+        entities.push({
+            'type: {system: "http://terminology.hl7.org/CodeSystem/audit-entity-type", code: "1", display: "Person"},
+            role: {system: "http://terminology.hl7.org/CodeSystem/object-role", code: "1", display: "Patient"},
+            what: {reference: string `Patient/${patientId}`}
+        });
+    }
+
+    return {
+        id: uuid:createType1AsString(),
+        meta: {profile: [pdqm:PROFILE_BASE_AUDITPDQMMATCHSUPPLIER]},
+        'type: auditType,
+        subtype: [
+            iti119Subtype,
+            {system: "http://hl7.org/fhir/restful-interaction", code: "search", display: "search"}
+        ],
+        action: "E",
+        outcome: success ? "0" : "4",
+        outcomeDesc: reason != "" ? reason : (),
+        recorded: getCurrentTimestamp(),
+        agent: [
+            // PDQm Consumer — source of the request
+            {
+                'type: {coding: [{system: "http://dicom.nema.org/resources/ontology/DCM", code: "110153", display: "Source Role ID"}]},
+                who: {display: agentName},
+                requestor: false
+            },
+            // PDQm Supplier — our server receiving the request
+            {
+                'type: {coding: [{system: "http://dicom.nema.org/resources/ontology/DCM", code: "110152", display: "Destination Role ID"}]},
+                who: {display: baseUrl},
+                requestor: false,
+                network: {address: baseUrl, 'type: "5"}
+            }
+        ],
+        'source: {
+            observer: {display: sourceObserverName},
+            'type: [{system: "http://terminology.hl7.org/CodeSystem/security-source-type", code: "4", display: "Application Server"}]
+        },
+        entity: entities
+    };
 }
 
 # Create audit event for Patient Create (ITI-104)
@@ -226,27 +360,31 @@ public function auditRead(string patientId, string agentName, boolean success, s
     _ = start sendAuditEvent(auditPatientRead(patientId, agentName, success, reason));
 }
 
-# Audit a patient search operation (fire-and-forget)
+# Audit a patient search operation (fire-and-forget, ITI-78 Supplier profile)
 #
-# + queryString - The search query
-# + agentName - The agent performing the action
+# + queryString - The URL query parameters
+# + agentName - Identity of the PDQm Consumer (requesting client)
+# + patientId - First matched patient ID, empty string when no results or on failure
 # + resultCount - Number of results
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
-public function auditSearch(string queryString, string agentName, int resultCount, boolean success, string reason = "") {
-    _ = start sendAuditEvent(auditPatientSearch(queryString, agentName, resultCount, success, reason));
+public function auditSearch(string queryString, string agentName, string patientId, int resultCount, boolean success,
+        string reason = "") {
+    _ = start sendPdqmQueryAuditEvent(auditPatientSearch(queryString, agentName, patientId, success, reason));
 }
 
-# Audit a patient match operation (fire-and-forget)
+# Audit a patient match operation (fire-and-forget, ITI-119 Supplier profile)
 #
-# + agentName - The agent performing the action
-# + matchCount - Number of matches
+# + agentName - Identity of the PDQm Consumer (requesting client)
+# + queryBody - JSON string of the Parameters resource sent in the $match request
+# + patientId - Matched patient ID, empty string when no match or on failure
+# + matchCount - Number of matches found
 # + success - Whether the operation succeeded
 # + reason - Optional failure reason
-public function auditMatch(string agentName, int matchCount, boolean success, string reason = "") {
-    _ = start sendAuditEvent(auditPatientMatch(agentName, matchCount, success, reason));
+public function auditMatch(string agentName, string queryBody, string patientId,
+        int matchCount, boolean success, string reason = "") {
+    _ = start sendPdqmMatchAuditEvent(auditPatientMatch(agentName, queryBody, patientId, success, reason));
 }
-
 # Audit a patient create operation (fire-and-forget)
 #
 # + patientId - The patient ID

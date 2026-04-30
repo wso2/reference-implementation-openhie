@@ -106,9 +106,24 @@ export interface MatchResult {
   matchGrade: MatchGrade;
 }
 
-export interface DedupResult {
-  groups: MatchGroup[];
+export interface DedupJobMeta {
+  status: 'completed';
+  jobId: string;
+  totalPatients: number;
+  totalGroups: number;
+  threshold: number;
   timestamp: string;
+  completedAt: string;
+}
+
+export interface DedupResult {
+  totalPatients: number;
+  totalGroups: number;
+  threshold: number;
+  timestamp: string;
+  groups: MatchGroup[];
+  _count: number;
+  _offset: number;
 }
 
 // ---------------------------------------------------------------------------

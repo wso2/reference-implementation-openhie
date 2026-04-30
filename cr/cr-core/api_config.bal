@@ -6,7 +6,7 @@ final r4:ResourceAPIConfig patientApiConfig = {
     profiles: [
         "https://profiles.ihe.net/ITI/PDQm/StructureDefinition/IHE.PDQm.Patient",
             
-                "https://profiles.ihe.net/ITI/PDQm/StructureDefinition/IHE.PDQm.MatchInputPatient"
+        "https://profiles.ihe.net/ITI/PDQm/StructureDefinition/IHE.PDQm.MatchInputPatient"
         
 
     ],

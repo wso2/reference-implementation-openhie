@@ -1,0 +1,201 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1777456166503,472,smoke-test,200,OK,Thread Group 1-2,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,457,0,31
+1777456166502,472,smoke-test,200,OK,Thread Group 1-1,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,457,0,31
+1777456166555,420,smoke-test,200,OK,Thread Group 1-3,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,405,0,1
+1777456166755,220,smoke-test,200,OK,Thread Group 1-5,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,205,0,1
+1777456166951,25,smoke-test,200,OK,Thread Group 1-7,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,25,0,1
+1777456166853,120,smoke-test,200,OK,Thread Group 1-6,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,107,0,1
+1777456166655,320,smoke-test,200,OK,Thread Group 1-4,text,true,,1246,247,7,7,http://localhost:9090/fhir/r4/metadata,305,0,1
+1777456167051,21,smoke-test,200,OK,Thread Group 1-8,text,true,,1246,247,8,8,http://localhost:9090/fhir/r4/metadata,21,0,1
+1777456167203,42,smoke-test,200,OK,Thread Group 1-9,text,true,,1246,247,9,9,http://localhost:9090/fhir/r4/metadata,42,0,2
+1777456167259,22,smoke-test,200,OK,Thread Group 1-10,text,true,,1246,247,10,10,http://localhost:9090/fhir/r4/metadata,22,0,2
+1777456167352,21,smoke-test,200,OK,Thread Group 1-11,text,true,,1246,247,11,11,http://localhost:9090/fhir/r4/metadata,21,0,2
+1777456167453,22,smoke-test,200,OK,Thread Group 1-12,text,true,,1246,247,12,12,http://localhost:9090/fhir/r4/metadata,22,0,2
+1777456167554,49,smoke-test,200,OK,Thread Group 1-13,text,true,,1246,247,13,13,http://localhost:9090/fhir/r4/metadata,49,0,1
+1777456167074,532,$match,200,OK,Thread Group 1-8,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,531,0,0
+1777456166980,629,$match,200,OK,Thread Group 1-6,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,629,0,0
+1777456166981,628,$match,200,OK,Thread Group 1-5,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,628,0,0
+1777456167282,329,$match,200,OK,Thread Group 1-10,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,329,0,0
+1777456166981,632,$match,200,OK,Thread Group 1-1,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,632,0,0
+1777456167246,369,$match,200,OK,Thread Group 1-9,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,369,0,0
+1777456166981,639,$match,200,OK,Thread Group 1-2,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,639,0,0
+1777456166980,646,$match,200,OK,Thread Group 1-3,text,true,,1434,1872,13,13,http://localhost:9090/fhir/r4/Patient/$match,645,0,0
+1777456166980,683,$match,200,OK,Thread Group 1-4,text,true,,1434,1872,14,14,http://localhost:9090/fhir/r4/Patient/$match,683,0,0
+1777456166980,683,$match,200,OK,Thread Group 1-7,text,true,,1434,1872,14,14,http://localhost:9090/fhir/r4/Patient/$match,683,0,0
+1777456167648,83,smoke-test,200,OK,Thread Group 1-14,text,true,,1246,247,14,14,http://localhost:9090/fhir/r4/metadata,83,0,1
+1777456167374,371,$match,200,OK,Thread Group 1-11,text,true,,1434,1872,14,14,http://localhost:9090/fhir/r4/Patient/$match,371,0,0
+1777456167476,324,$match,200,OK,Thread Group 1-12,text,true,,1434,1872,15,15,http://localhost:9090/fhir/r4/Patient/$match,324,0,0
+1777456167805,49,smoke-test,200,OK,Thread Group 1-15,text,true,,1246,247,16,16,http://localhost:9090/fhir/r4/metadata,49,0,4
+1777456167864,25,smoke-test,200,OK,Thread Group 1-16,text,true,,1246,247,16,16,http://localhost:9090/fhir/r4/metadata,24,0,9
+1777456167959,19,smoke-test,200,OK,Thread Group 1-17,text,true,,1246,247,17,17,http://localhost:9090/fhir/r4/metadata,19,0,1
+1777456167603,385,$match,200,OK,Thread Group 1-13,text,true,,1434,1872,17,17,http://localhost:9090/fhir/r4/Patient/$match,385,0,0
+1777456167855,165,$match,200,OK,Thread Group 1-15,text,true,,1434,1872,17,17,http://localhost:9090/fhir/r4/Patient/$match,165,0,0
+1777456167733,294,$match,200,OK,Thread Group 1-14,text,true,,1434,1872,17,17,http://localhost:9090/fhir/r4/Patient/$match,294,0,0
+1777456167889,147,$match,200,OK,Thread Group 1-16,text,true,,1434,1872,17,17,http://localhost:9090/fhir/r4/Patient/$match,147,0,0
+1777456168052,31,smoke-test,200,OK,Thread Group 1-18,text,true,,1246,247,18,18,http://localhost:9090/fhir/r4/metadata,31,0,9
+1777456168186,14,smoke-test,200,OK,Thread Group 1-19,text,true,,1246,247,19,19,http://localhost:9090/fhir/r4/metadata,14,0,3
+1777456168313,13,smoke-test,200,OK,Thread Group 1-20,text,true,,1246,247,20,20,http://localhost:9090/fhir/r4/metadata,12,0,2
+1777456168356,18,smoke-test,200,OK,Thread Group 1-21,text,true,,1246,247,21,21,http://localhost:9090/fhir/r4/metadata,18,0,6
+1777456168450,29,smoke-test,200,OK,Thread Group 1-22,text,true,,1246,247,22,22,http://localhost:9090/fhir/r4/metadata,29,0,2
+1777456168614,19,smoke-test,200,OK,Thread Group 1-23,text,true,,1246,247,23,23,http://localhost:9090/fhir/r4/metadata,19,0,3
+1777456168787,27,smoke-test,200,OK,Thread Group 1-25,text,true,,1246,247,25,25,http://localhost:9090/fhir/r4/metadata,27,0,3
+1777456168714,131,smoke-test,200,OK,Thread Group 1-24,text,true,,1246,247,25,25,http://localhost:9090/fhir/r4/metadata,130,0,3
+1777456168859,21,smoke-test,200,OK,Thread Group 1-26,text,true,,1246,247,26,26,http://localhost:9090/fhir/r4/metadata,21,0,4
+1777456167981,910,$match,200,OK,Thread Group 1-17,text,true,,1434,1872,26,26,http://localhost:9090/fhir/r4/Patient/$match,910,0,0
+1777456169024,44,smoke-test,200,OK,Thread Group 1-27,text,true,,1246,247,27,27,http://localhost:9090/fhir/r4/metadata,44,0,4
+1777456169099,12,smoke-test,200,OK,Thread Group 1-28,text,true,,1246,247,28,28,http://localhost:9090/fhir/r4/metadata,12,0,2
+1777456169158,14,smoke-test,200,OK,Thread Group 1-29,text,true,,1246,247,29,29,http://localhost:9090/fhir/r4/metadata,14,0,5
+1777456168201,1005,$match,200,OK,Thread Group 1-19,text,true,,1434,1872,29,29,http://localhost:9090/fhir/r4/Patient/$match,1005,0,0
+1777456169251,18,smoke-test,200,OK,Thread Group 1-30,text,true,,1246,247,30,30,http://localhost:9090/fhir/r4/metadata,18,0,2
+1777456168328,947,$match,200,OK,Thread Group 1-20,text,true,,1434,1872,30,30,http://localhost:9090/fhir/r4/Patient/$match,947,0,0
+1777456169500,42,smoke-test,200,OK,Thread Group 1-32,text,true,,1246,247,32,32,http://localhost:9090/fhir/r4/metadata,42,0,19
+1777456169491,58,smoke-test,200,OK,Thread Group 1-31,text,true,,1246,247,32,32,http://localhost:9090/fhir/r4/metadata,58,0,29
+1777456169558,13,smoke-test,200,OK,Thread Group 1-33,text,true,,1246,247,33,33,http://localhost:9090/fhir/r4/metadata,13,0,3
+1777456169659,11,smoke-test,200,OK,Thread Group 1-34,text,true,,1246,247,34,34,http://localhost:9090/fhir/r4/metadata,10,0,2
+1777456168845,828,$match,200,OK,Thread Group 1-24,text,true,,1434,1872,34,34,http://localhost:9090/fhir/r4/Patient/$match,828,0,0
+1777456168634,1069,$match,200,OK,Thread Group 1-23,text,true,,1434,1872,34,34,http://localhost:9090/fhir/r4/Patient/$match,1069,0,0
+1777456169778,71,smoke-test,200,OK,Thread Group 1-35,text,true,,1246,247,35,35,http://localhost:9090/fhir/r4/metadata,71,0,10
+1777456169871,28,smoke-test,200,OK,Thread Group 1-36,text,true,,1246,247,36,36,http://localhost:9090/fhir/r4/metadata,28,0,9
+1777456169960,29,smoke-test,200,OK,Thread Group 1-37,text,true,,1246,247,37,37,http://localhost:9090/fhir/r4/metadata,29,0,4
+1777456168480,1554,$match,200,OK,Thread Group 1-22,text,true,,1434,1872,37,37,http://localhost:9090/fhir/r4/Patient/$match,1554,0,0
+1777456169270,768,$match,200,OK,Thread Group 1-30,text,true,,1434,1872,37,37,http://localhost:9090/fhir/r4/Patient/$match,768,0,0
+1777456170057,24,smoke-test,200,OK,Thread Group 1-38,text,true,,1246,247,38,38,http://localhost:9090/fhir/r4/metadata,24,0,2
+1777456170256,39,smoke-test,200,OK,Thread Group 1-39,text,true,,1246,247,39,39,http://localhost:9090/fhir/r4/metadata,38,0,23
+1777456170353,9,smoke-test,200,OK,Thread Group 1-41,text,true,,1246,247,40,40,http://localhost:9090/fhir/r4/metadata,9,0,1
+1777456167610,2920,Create/update patient,500,Internal Server Error,Thread Group 1-6,text,false,,273,1155,42,42,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2920,0,0
+1777456170459,72,smoke-test,200,OK,Thread Group 1-42,text,true,,1246,247,42,42,http://localhost:9090/fhir/r4/metadata,71,0,2
+1777456168020,2517,Create/update patient,500,Internal Server Error,Thread Group 1-15,text,false,,273,1155,42,42,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2512,0,0
+1777456167613,2930,Create/update patient,500,Internal Server Error,Thread Group 1-1,text,false,,273,1155,42,42,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2930,0,0
+1777456167989,2564,Create/update patient,500,Internal Server Error,Thread Group 1-13,text,false,,273,1155,42,42,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2564,0,0
+1777456170565,11,smoke-test,200,OK,Thread Group 1-40,text,true,,1246,247,42,42,http://localhost:9090/fhir/r4/metadata,11,0,1
+1777456170600,14,smoke-test,200,OK,Thread Group 1-43,text,true,,1246,247,43,43,http://localhost:9090/fhir/r4/metadata,13,0,2
+1777456170651,9,smoke-test,200,OK,Thread Group 1-44,text,true,,1246,247,44,44,http://localhost:9090/fhir/r4/metadata,9,0,1
+1777456169544,1141,$match,200,OK,Thread Group 1-32,text,true,,1434,1872,44,44,http://localhost:9090/fhir/r4/Patient/$match,1141,0,0
+1777456169069,1623,$match,200,OK,Thread Group 1-27,text,true,,1434,1872,44,44,http://localhost:9090/fhir/r4/Patient/$match,1623,0,0
+1777456167626,3077,Create/update patient,500,Internal Server Error,Thread Group 1-3,text,false,,273,1155,44,44,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3077,0,0
+1777456170795,34,smoke-test,200,OK,Thread Group 1-45,text,true,,1246,247,45,45,http://localhost:9090/fhir/r4/metadata,34,0,1
+1777456168814,2034,$match,200,OK,Thread Group 1-25,text,true,,1434,1872,45,45,http://localhost:9090/fhir/r4/Patient/$match,2034,0,0
+1777456170885,21,smoke-test,200,OK,Thread Group 1-46,text,true,,1246,247,46,46,http://localhost:9090/fhir/r4/metadata,21,0,3
+1777456170949,22,smoke-test,200,OK,Thread Group 1-47,text,true,,1246,247,47,47,http://localhost:9090/fhir/r4/metadata,22,0,1
+1777456171050,14,smoke-test,200,OK,Thread Group 1-48,text,true,,1246,247,48,48,http://localhost:9090/fhir/r4/metadata,14,0,2
+1777456167801,3290,Create/update patient,500,Internal Server Error,Thread Group 1-12,text,false,,273,1155,48,48,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3290,0,0
+1777456168036,3071,Create/update patient,500,Internal Server Error,Thread Group 1-16,text,false,,273,1155,48,48,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3071,0,0
+1777456167616,3563,Create/update patient,500,Internal Server Error,Thread Group 1-9,text,false,,273,1155,49,49,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3562,0,0
+1777456168029,3163,Create/update patient,500,Internal Server Error,Thread Group 1-14,text,false,,273,1155,49,49,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3163,0,0
+1777456168881,2320,$match,200,OK,Thread Group 1-26,text,true,,1434,1872,49,49,http://localhost:9090/fhir/r4/Patient/$match,2320,0,0
+1777456169550,1669,$match,200,OK,Thread Group 1-31,text,true,,1434,1872,49,49,http://localhost:9090/fhir/r4/Patient/$match,1668,0,0
+1777456171249,24,smoke-test,200,OK,Thread Group 1-50,text,true,,1246,247,50,50,http://localhost:9090/fhir/r4/metadata,24,0,2
+1777456169112,2162,$match,200,OK,Thread Group 1-28,text,true,,1434,1872,50,50,http://localhost:9090/fhir/r4/Patient/$match,2162,0,0
+1777456169853,1442,$match,200,OK,Thread Group 1-35,text,true,,1434,1872,50,50,http://localhost:9090/fhir/r4/Patient/$match,1442,0,0
+1777456168375,2948,$match,200,OK,Thread Group 1-21,text,true,,1434,1872,50,50,http://localhost:9090/fhir/r4/Patient/$match,2948,0,0
+1777456171180,180,smoke-test,200,OK,Thread Group 1-49,text,true,,1246,247,50,50,http://localhost:9090/fhir/r4/metadata,180,0,11
+1777456170703,881,parameter search,200,OK,Thread Group 1-3,text,true,,9675,260,50,50,http://localhost:9090/fhir/r4/Patient?family=Perera,879,0,0
+1777456171092,659,parameter search,200,OK,Thread Group 1-12,text,true,,9672,260,49,49,http://localhost:9090/fhir/r4/Patient?family=Perera,658,0,0
+1777456170545,1207,parameter search,200,OK,Thread Group 1-15,text,true,,9675,260,48,48,http://localhost:9090/fhir/r4/Patient?family=Perera,1207,0,0
+1777456170533,1225,parameter search,200,OK,Thread Group 1-6,text,true,,9675,260,47,47,http://localhost:9090/fhir/r4/Patient?family=Perera,1225,0,0
+1777456170545,1233,parameter search,200,OK,Thread Group 1-1,text,true,,9675,260,46,46,http://localhost:9090/fhir/r4/Patient?family=Perera,1233,0,0
+1777456167606,4189,Create/update patient,500,Internal Server Error,Thread Group 1-8,text,false,,273,1155,45,45,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4189,0,0
+1777456169990,1892,$match,200,OK,Thread Group 1-37,text,true,,1434,1872,45,45,http://localhost:9090/fhir/r4/Patient/$match,1892,0,0
+1777456170362,1529,$match,200,OK,Thread Group 1-39,text,true,,1434,1872,45,45,http://localhost:9090/fhir/r4/Patient/$match,1529,0,0
+1777456169173,2743,$match,200,OK,Thread Group 1-29,text,true,,1434,1872,45,45,http://localhost:9090/fhir/r4/Patient/$match,2743,0,0
+1777456168084,3865,$match,200,OK,Thread Group 1-18,text,true,,1434,1872,45,45,http://localhost:9090/fhir/r4/Patient/$match,3865,0,0
+1777456167621,4336,Create/update patient,500,Internal Server Error,Thread Group 1-2,text,false,,273,1155,45,45,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4336,0,0
+1777456171179,846,parameter search,200,OK,Thread Group 1-9,text,true,,9675,260,45,45,http://localhost:9090/fhir/r4/Patient?family=Perera,846,0,0
+1777456169572,2517,$match,200,OK,Thread Group 1-33,text,true,,1434,1872,44,44,http://localhost:9090/fhir/r4/Patient/$match,2517,0,0
+1777456168891,3298,Create/update patient,500,Internal Server Error,Thread Group 1-17,text,false,,273,1155,44,44,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3298,0,0
+1777456171118,1079,parameter search,200,OK,Thread Group 1-16,text,true,,9672,260,44,44,http://localhost:9090/fhir/r4/Patient?family=Perera,1079,0,0
+1777456169900,2306,$match,200,OK,Thread Group 1-36,text,true,,1434,1872,43,43,http://localhost:9090/fhir/r4/Patient/$match,2306,0,0
+1777456170660,1650,$match,200,OK,Thread Group 1-44,text,true,,1434,1872,43,43,http://localhost:9090/fhir/r4/Patient/$match,1650,0,0
+1777456170362,1962,$match,200,OK,Thread Group 1-41,text,true,,1434,1872,43,43,http://localhost:9090/fhir/r4/Patient/$match,1961,0,0
+1777456167613,4836,Create/update patient,500,Internal Server Error,Thread Group 1-10,text,false,,273,1155,43,43,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4836,0,0
+1777456169703,2750,Create/update patient,500,Internal Server Error,Thread Group 1-23,text,false,,273,1155,43,43,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2750,0,0
+1777456171958,573,parameter search,200,OK,Thread Group 1-2,text,true,,9675,260,43,43,http://localhost:9090/fhir/r4/Patient?family=Perera,571,0,0
+1777456171064,1473,$match,200,OK,Thread Group 1-48,text,true,,1434,1872,42,42,http://localhost:9090/fhir/r4/Patient/$match,1473,0,0
+1777456171796,807,parameter search,200,OK,Thread Group 1-8,text,true,,9675,260,42,42,http://localhost:9090/fhir/r4/Patient?family=Perera,807,0,0
+1777456170614,2009,$match,200,OK,Thread Group 1-43,text,true,,1434,1872,41,41,http://localhost:9090/fhir/r4/Patient/$match,2009,0,0
+1777456170535,2110,$match,200,OK,Thread Group 1-42,text,true,,1434,1872,41,41,http://localhost:9090/fhir/r4/Patient/$match,2110,0,0
+1777456170553,2168,parameter search,200,OK,Thread Group 1-13,text,true,,9675,260,41,41,http://localhost:9090/fhir/r4/Patient?family=Perera,2167,0,0
+1777456171361,1365,$match,200,OK,Thread Group 1-49,text,true,,1434,1872,40,40,http://localhost:9090/fhir/r4/Patient/$match,1365,0,0
+1777456172190,555,parameter search,200,OK,Thread Group 1-17,text,true,,9675,260,40,40,http://localhost:9090/fhir/r4/Patient?family=Perera,553,0,0
+1777456169670,3193,$match,200,OK,Thread Group 1-34,text,true,,1434,1872,39,39,http://localhost:9090/fhir/r4/Patient/$match,3193,0,0
+1777456171274,1590,$match,200,OK,Thread Group 1-50,text,true,,1434,1872,39,39,http://localhost:9090/fhir/r4/Patient/$match,1590,0,0
+1777456172450,483,parameter search,200,OK,Thread Group 1-10,text,true,,9675,260,39,39,http://localhost:9090/fhir/r4/Patient?family=Perera,483,0,0
+1777456171193,1764,parameter search,200,OK,Thread Group 1-14,text,true,,9672,260,38,38,http://localhost:9090/fhir/r4/Patient?family=Perera,1763,0,0
+1777456169276,3716,Create/update patient,500,Internal Server Error,Thread Group 1-20,text,false,,273,1155,37,37,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3716,0,0
+1777456170576,2431,$match,200,OK,Thread Group 1-40,text,true,,1434,1872,37,37,http://localhost:9090/fhir/r4/Patient/$match,2431,0,0
+1777456172455,639,parameter search,200,OK,Thread Group 1-23,text,true,,9675,260,37,37,http://localhost:9090/fhir/r4/Patient?family=Perera,639,0,0
+1777456170829,2271,$match,200,OK,Thread Group 1-45,text,true,,1434,1872,36,36,http://localhost:9090/fhir/r4/Patient/$match,2271,0,0
+1777456170686,2524,Create/update patient,500,Internal Server Error,Thread Group 1-32,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2524,0,0
+1777456170082,3192,$match,200,OK,Thread Group 1-38,text,true,,1434,1872,36,36,http://localhost:9090/fhir/r4/Patient/$match,3192,0,0
+1777456171296,2025,Create/update patient,500,Internal Server Error,Thread Group 1-35,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2025,0,0
+1777456171202,2226,Create/update patient,500,Internal Server Error,Thread Group 1-26,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2226,0,0
+1777456171278,2197,Create/update patient,500,Internal Server Error,Thread Group 1-28,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2197,0,0
+1777456170849,2650,Create/update patient,500,Internal Server Error,Thread Group 1-25,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2650,0,0
+1777456171917,1620,Create/update patient,500,Internal Server Error,Thread Group 1-29,text,false,,273,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1620,0,0
+1777456170972,2573,$match,200,OK,Thread Group 1-47,text,true,,1434,1872,36,36,http://localhost:9090/fhir/r4/Patient/$match,2573,0,0
+1777456170906,2697,$match,200,OK,Thread Group 1-46,text,true,,1434,1872,36,36,http://localhost:9090/fhir/r4/Patient/$match,2696,0,0
+1777456167747,5858,Create/update patient,200,OK,Thread Group 1-11,text,true,,1074,1155,36,36,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,5858,0,0
+1777456173210,414,parameter search,200,OK,Thread Group 1-32,text,true,,9672,260,36,36,http://localhost:9090/fhir/r4/Patient?family=Perera,413,0,0
+1777456172327,1307,Create/update patient,500,Internal Server Error,Thread Group 1-41,text,false,,273,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1307,0,0
+1777456167664,6041,Create/update patient,200,OK,Thread Group 1-7,text,true,,1074,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,6038,0,0
+1777456172208,1493,Create/update patient,500,Internal Server Error,Thread Group 1-36,text,false,,273,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1493,0,0
+1777456167663,6102,Create/update patient,200,OK,Thread Group 1-4,text,true,,1074,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,6102,0,0
+1777456171323,2555,Create/update patient,500,Internal Server Error,Thread Group 1-21,text,false,,273,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2555,0,0
+1777456169207,4731,Create/update patient,200,OK,Thread Group 1-19,text,true,,1074,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4731,0,0
+1777456167610,6350,Create/update patient,200,OK,Thread Group 1-5,text,true,,1074,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,6350,0,0
+1777456170693,3286,Create/update patient,500,Internal Server Error,Thread Group 1-27,text,false,,273,1155,35,35,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3286,0,0
+1777456173476,584,parameter search,200,OK,Thread Group 1-28,text,true,,9675,260,35,35,http://localhost:9090/fhir/r4/Patient?family=Perera,584,0,0
+1777456172993,1131,parameter search,200,OK,Thread Group 1-20,text,true,,9675,260,34,34,http://localhost:9090/fhir/r4/Patient?family=Perera,1131,0,0
+1777456172624,1504,Create/update patient,500,Internal Server Error,Thread Group 1-43,text,false,,273,1155,33,33,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1504,0,0
+1777456170052,4084,Create/update patient,200,OK,Thread Group 1-22,text,true,,1074,1155,33,33,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4084,0,0
+1777456172310,1826,Create/update patient,500,Internal Server Error,Thread Group 1-44,text,false,,273,1155,33,33,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1826,0,0
+1777456172727,1496,Create/update patient,500,Internal Server Error,Thread Group 1-49,text,false,,273,1155,33,33,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1496,0,0
+1777456173322,1011,parameter search,200,OK,Thread Group 1-35,text,true,,9675,260,33,33,http://localhost:9090/fhir/r4/Patient?family=Perera,1011,0,0
+1777456173634,724,parameter search,200,OK,Thread Group 1-41,text,true,,9675,260,32,32,http://localhost:9090/fhir/r4/Patient?family=Perera,724,0,0
+1777456171220,3141,Create/update patient,500,Internal Server Error,Thread Group 1-31,text,false,,273,1155,31,31,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3141,0,0
+1777456173537,864,parameter search,200,OK,Thread Group 1-29,text,true,,9675,260,31,31,http://localhost:9090/fhir/r4/Patient?family=Perera,863,0,0
+1777456173712,713,parameter search,200,OK,Thread Group 1-7,text,true,,9675,260,30,30,http://localhost:9090/fhir/r4/Patient?family=Perera,710,0,0
+1777456173710,746,parameter search,200,OK,Thread Group 1-36,text,true,,9675,260,29,29,http://localhost:9090/fhir/r4/Patient?family=Perera,745,0,0
+1777456170040,4460,Create/update patient,500,Internal Server Error,Thread Group 1-30,text,false,,273,1155,28,28,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,4460,0,0
+1777456173500,1075,parameter search,200,OK,Thread Group 1-25,text,true,,9675,260,28,28,http://localhost:9090/fhir/r4/Patient?family=Perera,1075,0,0
+1777456173961,621,parameter search,200,OK,Thread Group 1-5,text,true,,9675,260,27,27,http://localhost:9090/fhir/r4/Patient?family=Perera,621,0,0
+1777456173980,638,parameter search,200,OK,Thread Group 1-27,text,true,,9675,260,26,26,http://localhost:9090/fhir/r4/Patient?family=Perera,638,0,0
+1777456173879,765,parameter search,200,OK,Thread Group 1-21,text,true,,9675,260,25,25,http://localhost:9090/fhir/r4/Patient?family=Perera,765,0,0
+1777456173430,1273,parameter search,200,OK,Thread Group 1-26,text,true,,9675,260,24,24,http://localhost:9090/fhir/r4/Patient?family=Perera,1273,0,0
+1777456173938,775,parameter search,200,OK,Thread Group 1-19,text,true,,9675,260,23,23,http://localhost:9090/fhir/r4/Patient?family=Perera,775,0,0
+1777456172864,1854,Create/update patient,500,Internal Server Error,Thread Group 1-34,text,false,,273,1155,22,22,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1854,0,0
+1777456173765,991,parameter search,200,OK,Thread Group 1-4,text,true,,9675,260,22,22,http://localhost:9090/fhir/r4/Patient?family=Perera,990,0,0
+1777456173101,1683,Create/update patient,500,Internal Server Error,Thread Group 1-45,text,false,,273,1155,21,21,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1683,0,0
+1777456174366,437,parameter search,200,OK,Thread Group 1-31,text,true,,9675,260,21,21,http://localhost:9090/fhir/r4/Patient?family=Perera,437,0,0
+1777456172864,1963,Create/update patient,500,Internal Server Error,Thread Group 1-50,text,false,,273,1155,20,20,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1963,0,0
+1777456174137,702,parameter search,200,OK,Thread Group 1-44,text,true,,9675,260,20,20,http://localhost:9090/fhir/r4/Patient?family=Perera,702,0,0
+1777456174137,768,parameter search,200,OK,Thread Group 1-22,text,true,,9675,260,19,19,http://localhost:9090/fhir/r4/Patient?family=Perera,768,0,0
+1777456174129,797,parameter search,200,OK,Thread Group 1-43,text,true,,9675,260,18,18,http://localhost:9090/fhir/r4/Patient?family=Perera,797,0,0
+1777456169673,5253,Create/update patient,200,OK,Thread Group 1-24,text,true,,1074,1155,18,18,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,5253,0,0
+1777456174501,463,parameter search,200,OK,Thread Group 1-30,text,true,,9675,260,17,17,http://localhost:9090/fhir/r4/Patient?family=Perera,463,0,0
+1777456173008,1978,Create/update patient,500,Internal Server Error,Thread Group 1-40,text,false,,273,1155,16,16,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1978,0,0
+1777456173606,1470,parameter search,200,OK,Thread Group 1-11,text,true,,9675,260,16,16,http://localhost:9090/fhir/r4/Patient?family=Perera,1469,0,0
+1777456174223,913,parameter search,200,OK,Thread Group 1-49,text,true,,9675,260,15,15,http://localhost:9090/fhir/r4/Patient?family=Perera,912,0,0
+1777456171892,3291,Create/update patient,200,OK,Thread Group 1-39,text,true,,1074,1155,14,14,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3291,0,0
+1777456171883,3318,Create/update patient,200,OK,Thread Group 1-37,text,true,,1074,1155,14,14,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3318,0,0
+1777456174927,325,parameter search,200,OK,Thread Group 1-24,text,true,,9675,260,14,14,http://localhost:9090/fhir/r4/Patient?family=Perera,325,0,0
+1777456174719,542,parameter search,200,OK,Thread Group 1-34,text,true,,9675,260,13,13,http://localhost:9090/fhir/r4/Patient?family=Perera,542,0,0
+1777456174784,499,parameter search,200,OK,Thread Group 1-45,text,true,,9675,260,12,12,http://localhost:9090/fhir/r4/Patient?family=Perera,499,0,0
+1777456172090,3213,Create/update patient,200,OK,Thread Group 1-33,text,true,,1074,1155,11,11,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3213,0,0
+1777456173603,1707,Create/update patient,500,Internal Server Error,Thread Group 1-46,text,false,,273,1155,11,11,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,1707,0,0
+1777456171950,3380,Create/update patient,200,OK,Thread Group 1-18,text,true,,1071,1155,11,11,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,3380,0,0
+1777456173275,2073,Create/update patient,200,OK,Thread Group 1-38,text,true,,1074,1155,11,11,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2073,0,0
+1777456174828,556,parameter search,200,OK,Thread Group 1-50,text,true,,9675,260,11,11,http://localhost:9090/fhir/r4/Patient?family=Perera,556,0,0
+1777456172538,2850,Create/update patient,200,OK,Thread Group 1-48,text,true,,1074,1155,10,10,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2850,0,0
+1777456174987,424,parameter search,200,OK,Thread Group 1-40,text,true,,9675,260,10,10,http://localhost:9090/fhir/r4/Patient?family=Perera,424,0,0
+1777456172645,2839,Create/update patient,200,OK,Thread Group 1-42,text,true,,1074,1155,9,9,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2839,0,0
+1777456175183,331,parameter search,200,OK,Thread Group 1-39,text,true,,9675,260,9,9,http://localhost:9090/fhir/r4/Patient?family=Perera,331,0,0
+1777456175202,324,parameter search,200,OK,Thread Group 1-37,text,true,,9675,260,8,8,http://localhost:9090/fhir/r4/Patient?family=Perera,324,0,0
+1777456173545,2006,Create/update patient,200,OK,Thread Group 1-47,text,true,,1074,1155,7,7,http://localhost:9090/fhir/r4/Patient?identifier=http%3A%2F%2Fkandy-regional.moh.lk%2Fmr%7CCR-2024-0540,2006,0,0
+1777456175304,255,parameter search,200,OK,Thread Group 1-33,text,true,,9675,260,7,7,http://localhost:9090/fhir/r4/Patient?family=Perera,255,0,0
+1777456175349,273,parameter search,200,OK,Thread Group 1-38,text,true,,9675,260,6,6,http://localhost:9090/fhir/r4/Patient?family=Perera,273,0,0
+1777456175389,262,parameter search,200,OK,Thread Group 1-48,text,true,,9675,260,5,5,http://localhost:9090/fhir/r4/Patient?family=Perera,261,0,0
+1777456175310,349,parameter search,200,OK,Thread Group 1-46,text,true,,9675,260,4,4,http://localhost:9090/fhir/r4/Patient?family=Perera,349,0,0
+1777456175331,374,parameter search,200,OK,Thread Group 1-18,text,true,,9675,260,3,3,http://localhost:9090/fhir/r4/Patient?family=Perera,374,0,0
+1777456175486,246,parameter search,200,OK,Thread Group 1-42,text,true,,9675,260,2,2,http://localhost:9090/fhir/r4/Patient?family=Perera,245,0,0
+1777456175552,230,parameter search,200,OK,Thread Group 1-47,text,true,,9675,260,1,1,http://localhost:9090/fhir/r4/Patient?family=Perera,230,0,0

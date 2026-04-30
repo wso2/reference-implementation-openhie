@@ -17,7 +17,6 @@ target/
 
 # Configuration files (may contain secrets)
 Config.toml
-config.toml
 
 # IDE
 .vscode/

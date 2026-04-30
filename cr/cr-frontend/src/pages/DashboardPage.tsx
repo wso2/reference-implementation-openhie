@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Alert, Box, Button, CircularProgress, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, CircularProgress, TablePagination, Typography } from '@wso2/oxygen-ui';
 import { Play, RefreshCw, AlertCircle } from 'lucide-react';
 import SearchToolbar from '../components/SearchToolbar';
 import StatsGrid from '../components/StatsGrid';
@@ -26,7 +26,8 @@ export default function DashboardPage() {
     isStarting, isRetrieving, isJobRunning,
     startError, retrieveError, mergeError,
     lastRunTime,
-    runDedup, retrieveResults,
+    totalGroups, currentPage, pageSize,
+    runDedup, retrieveResults, loadPage, handlePageSizeChange,
     approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   } = useMatchGroups();
   const { notification, showNotification, dismissNotification } = useNotification();
@@ -219,6 +220,18 @@ export default function DashboardPage() {
           ))
         )}
       </Box>
+
+      {totalGroups > 0 && (
+        <TablePagination
+          component="div"
+          count={totalGroups}
+          page={currentPage}
+          rowsPerPage={pageSize}
+          rowsPerPageOptions={[10, 20, 50]}
+          onPageChange={(_e, page) => loadPage(page)}
+          onRowsPerPageChange={(e) => handlePageSizeChange(Number(e.target.value))}
+        />
+      )}
 
       {mergeModalOpen && selectedGroup && (
         <MergeModal

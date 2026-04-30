@@ -1,5 +1,5 @@
 import { fetchApi, fetchApiResponse, ApiError } from './client';
-import type { FhirPatient, MatchGrade, MatchResult, DedupResult } from '../types';
+import type { FhirPatient, MatchGrade, MatchResult, DedupResult, DedupJobMeta } from '../types';
 
 function classifyScore(score: number): MatchGrade {
   if (score >= 0.95) return 'certain';
@@ -48,21 +48,27 @@ export async function startDedupJob(): Promise<{ contentLocation: string | null 
 }
 
 // Polls the Content-Location URL from dedupstart.
-// Returns { done: false } while running (202), { done: true, result } when complete (200).
+// Returns { done: false } while running (202), { done: true, meta } when complete (200).
+// meta contains totals/timestamp but NO groups array — fetch groups via fetchDedupPage().
 // Throws on failure (5xx).
 export async function pollDedupStatus(
   contentLocation: string
-): Promise<{ done: false } | { done: true; result: DedupResult }> {
+): Promise<{ done: false } | { done: true; meta: DedupJobMeta }> {
   const response = await fetchApiResponse(contentLocation);
   if (response.status === 202) {
     return { done: false };
   }
   if (response.status === 200) {
-    const result = await response.json() as DedupResult;
-    return { done: true, result };
+    const meta = await response.json() as DedupJobMeta;
+    return { done: true, meta };
   }
   const body = await response.json().catch(() => null);
   throw new ApiError(response.status, response.statusText, body);
+}
+
+// Fetch one page of dedup groups.
+export async function fetchDedupPage(offset = 0, count = 20): Promise<DedupResult> {
+  return fetchApi(`/Patient/dedup?_count=${count}&_offset=${offset}`) as Promise<DedupResult>;
 }
 
 export async function rejectDedupMatch(patientId1: string, patientId2: string): Promise<unknown> {

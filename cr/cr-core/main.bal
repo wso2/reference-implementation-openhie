@@ -64,7 +64,8 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             return <http:Forbidden>{body: errorOutcome(authResult.message())};
         }
         string agentName = authResult.email;
-        
+        string rawPayload = payload.toJsonString();
+
         // Extract parameters
         json? patientJson = ();
         int count = 10;
@@ -72,7 +73,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
 
         pdqm:MatchParametersInParameter[]? params = payload.'parameter;
         if params is () {
-            auditMatch(agentName, 0, false, "Missing parameter array");
+            auditMatch(agentName, rawPayload, "", 0, false, "Missing parameter array");
             return <http:BadRequest>{body: errorOutcome("Missing parameter array")};
         }
 
@@ -98,14 +99,14 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         }
 
         if patientJson is () {
-            auditMatch(agentName, 0, false, "Missing resource parameter");
+            auditMatch(agentName, rawPayload, "", 0, false, "Missing resource parameter");
             return <http:BadRequest>{body: errorOutcome("Missing resource parameter")};
         }
 
         // Parse input patient
         pdqm:PDQmMatchInput|error inputPatient = patientJson.cloneWithType();
         if inputPatient is error {
-            auditMatch(agentName, 0, false, "Invalid Patient: " + inputPatient.message());
+            auditMatch(agentName, rawPayload, "", 0, false, "Invalid Patient: " + inputPatient.message());
             return <http:BadRequest>{body: errorOutcome("Invalid Patient: " + inputPatient.message())};
         }
 
@@ -140,7 +141,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         MatchResult[]|error matches = matchPatients(searchPatient, matchThreshold, count);
         if matches is error {
             log:printError("Match error", matches);
-            auditMatch(agentName, 0, false, "Match failed: " + matches.message());
+            auditMatch(agentName, rawPayload, "", 0, false, "Match failed: " + matches.message());
             return <http:InternalServerError>{body: errorOutcome("Match failed")};
         }
 
@@ -149,7 +150,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         if onlyCertainMatches {
             MatchResult[] certain = finalMatches.filter(m => m.matchGrade == "certain");
             if certain.length() > 1 {
-                auditMatch(agentName, certain.length(), false, "Multiple certain matches found");
+                auditMatch(agentName, rawPayload, "", certain.length(), false, "Multiple certain matches found");
                 return <http:BadRequest>{
                     body: errorOutcome("Multiple certain matches found")
                 };
@@ -182,7 +183,8 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo(string `ITI-119: Found ${entries.length()} matches`);
 
         // Audit successful match
-        auditMatch(agentName, entries.length(), true);
+        string firstPatientId = finalMatches.length() > 0 ? (finalMatches[0].patient.id ?: "") : "";
+        auditMatch(agentName, rawPayload, firstPatientId, entries.length(), true);
 
         return <http:Ok>{body: {
             "resourceType": "Bundle",
@@ -329,11 +331,19 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo(string `Dedup status: ${jobStatus} (job: ${jobId})`);
 
         if jobStatus == "completed" {
-            // 200 — done, full DedupResult inline (FHIR async pattern: same as $export manifest response)
+            // 200 — done, metadata only (groups are fetched separately via GET /Patient/dedup?_count=&_offset=)
             http:Response ok = new;
             ok.statusCode = 200;
             if fullResult is DedupResult {
-                ok.setJsonPayload(fullResult.toJson());
+                ok.setJsonPayload({
+                    "status": "completed",
+                    "jobId": jobId,
+                    "totalPatients": fullResult.totalPatients,
+                    "totalGroups": fullResult.totalGroups,
+                    "threshold": <float>fullResult.threshold,
+                    "timestamp": fullResult.timestamp,
+                    "completedAt": completedAt
+                });
             }
             return ok;
         }
@@ -370,6 +380,22 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             return <http:Forbidden>{body: errorOutcome(authResult.message())};
         }
 
+        // _count and _offset are registered valid params in api_config.bal and passed
+        // through getRequestSearchParameters() by the FHIR framework.
+        map<r4:RequestSearchParameter[]> rawParams = ctx.getRequestSearchParameters();
+        int count = 20;
+        int offset = 0;
+        r4:RequestSearchParameter[]? countParam = rawParams["_count"];
+        r4:RequestSearchParameter[]? offsetParam = rawParams["_offset"];
+        if countParam is r4:RequestSearchParameter[] && countParam.length() > 0 {
+            int|error parsed = int:fromString(countParam[0].value);
+            if parsed is int && parsed > 0 { count = parsed; }
+        }
+        if offsetParam is r4:RequestSearchParameter[] && offsetParam.length() > 0 {
+            int|error parsed = int:fromString(offsetParam[0].value);
+            if parsed is int && parsed >= 0 { offset = parsed; }
+        }
+
         // If a job is running, tell the client
         lock {
             if dedupRunning && currentDedupJobId is string {
@@ -397,7 +423,18 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             if latestJobId != "" {
                 DedupJob? found = dedupJobs[latestJobId];
                 if found is DedupJob && found.result is DedupResult {
-                    return (<DedupResult>found.result).toJson();
+                    DedupResult r = <DedupResult>found.result;
+                    int endIdx = int:min(offset + count, r.groups.length());
+                    DedupGroup[] page = offset < r.groups.length() ? r.groups.slice(offset, endIdx) : [];
+                    return {
+                        "totalPatients": r.totalPatients,
+                        "totalGroups": r.totalGroups,
+                        "threshold": <float>r.threshold,
+                        "timestamp": r.timestamp,
+                        "groups": page.toJson(),
+                        "_count": count,
+                        "_offset": offset
+                    };
                 }
             }
         }
@@ -408,7 +445,9 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             "totalGroups": 0,
             "threshold": <float>dedupThreshold,
             "timestamp": getCurrentTimestamp(),
-            "groups": []
+            "groups": [],
+            "_count": count,
+            "_offset": offset
         };
     }
 
@@ -547,10 +586,10 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         if idParam is string[] && idParam.length() > 0 {
             pdqm:PDQmPatient|PatientNotFoundError|error result = getPatientById(idParam[0]);
             if result is pdqm:PDQmPatient {
-                auditSearch(queryString, agentName, 1, true);
+                auditSearch(queryString, agentName, result.id ?: "", 1, true);
                 return searchBundle([result]);
             }
-            auditSearch(queryString, agentName, 0, true);
+            auditSearch(queryString, agentName, "", 0, true);
             return searchBundle([]);
         }
         
@@ -562,7 +601,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         foreach string paramKey in params.keys() {
             if allowedParams.indexOf(paramKey) is () {
                 log:printError(string `Unsupported search parameter: ${paramKey}`);
-                auditSearch(queryString, agentName, 0, false, string `Unsupported search parameter: ${paramKey}`);
+                auditSearch(queryString, agentName, "", 0, false, string `Unsupported search parameter: ${paramKey}`);
                 return <http:BadRequest>{body: errorOutcome(string `Unsupported search parameter: ${paramKey}. Supported parameters: ${string:'join(", ", ...allowedParams)}`)};
             }
         }
@@ -615,7 +654,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
 
         if results is error {
             log:printError("Search error", results);
-            auditSearch(queryString, agentName, 0, false, "Search failed: " + results.message());
+            auditSearch(queryString, agentName, "", 0, false, "Search failed: " + results.message());
             return <http:InternalServerError>{body: errorOutcome("Search failed")};
         }
 
@@ -632,7 +671,8 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         log:printInfo(string `ITI-78: Found ${results.length()} patients (total: ${total})`);
 
         // Audit successful search
-        auditSearch(queryString, agentName, results.length(), true);
+        string firstSearchPatientId = results.length() > 0 ? (results[0].id ?: "") : "";
+        auditSearch(queryString, agentName, firstSearchPatientId, results.length(), true);
 
         return searchBundle(results, total);
     }

@@ -1,25 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { startDedupJob, pollDedupStatus, rejectDedupMatch } from '../api/matchService';
+import { startDedupJob, pollDedupStatus, rejectDedupMatch, fetchDedupPage } from '../api/matchService';
 import { resolvePatient } from '../api/patientService';
 import type { FhirPatient, MatchGroup } from '../types';
 
-const SESSION_KEY = 'matchGroups';
+const DEDUP_META_KEY = 'dedupMeta';
 const LAST_RUN_KEY = 'dedupLastRunTime';
 
-function loadFromSession(): MatchGroup[] {
+function loadMetaFromSession(): { totalGroups: number; totalPatients: number } {
   try {
-    const stored = sessionStorage.getItem(SESSION_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const stored = sessionStorage.getItem(DEDUP_META_KEY);
+    return stored ? JSON.parse(stored) : { totalGroups: 0, totalPatients: 0 };
   } catch {
-    return [];
+    return { totalGroups: 0, totalPatients: 0 };
   }
 }
 
 export function useMatchGroups() {
-  const [matchGroups, setMatchGroups] = useState<MatchGroup[]>(loadFromSession);
-  useEffect(() => {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(matchGroups));
-  }, [matchGroups]);
+  const savedMeta = loadMetaFromSession();
+  const [matchGroups, setMatchGroups] = useState<MatchGroup[]>([]);
+  const [totalGroups, setTotalGroups] = useState(savedMeta.totalGroups);
+  const [totalPatients, setTotalPatients] = useState(savedMeta.totalPatients);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSizeState] = useState(20);
 
   const [merging, setMerging] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -53,19 +55,57 @@ export function useMatchGroups() {
     }
   }, []);
 
-  // One-shot fetch: check dedupstatus once, load results if ready.
+  const loadPage = useCallback(async (page: number) => {
+    try {
+      const result = await fetchDedupPage(page * pageSize, pageSize);
+      if (mountedRef.current) {
+        setMatchGroups(result.groups);
+        setCurrentPage(page);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setRetrieveError((err as Error).message ?? 'Failed to load page');
+      }
+    }
+  }, [pageSize]);
+
+  const handlePageSizeChange = useCallback(async (newSize: number) => {
+    setPageSizeState(newSize);
+    try {
+      const result = await fetchDedupPage(0, newSize);
+      if (mountedRef.current) {
+        setMatchGroups(result.groups);
+        setCurrentPage(0);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setRetrieveError((err as Error).message ?? 'Failed to load page');
+      }
+    }
+  }, []);
+
+  // One-shot fetch: check dedupstatus once and store metadata.
+  // Spinner clears as soon as status is known; groups are loaded separately via loadPage.
   const retrieveResults = useCallback(async () => {
     setIsRetrieving(true);
     setRetrieveError(null);
+    let shouldLoadPage = false;
     try {
       const outcome = await pollDedupStatus('/Patient/dedupstatus');
       if (!mountedRef.current) return;
       if (outcome.done) {
-        setMatchGroups(outcome.result?.groups || []);
+        const { meta } = outcome;
+        setTotalGroups(meta.totalGroups);
+        setTotalPatients(meta.totalPatients);
         setIsJobRunning(false);
-        const runTime = outcome.result?.timestamp || new Date().toISOString();
+        const runTime = meta.timestamp || new Date().toISOString();
         setLastRunTime(runTime);
         sessionStorage.setItem(LAST_RUN_KEY, runTime);
+        sessionStorage.setItem(DEDUP_META_KEY, JSON.stringify({
+          totalGroups: meta.totalGroups,
+          totalPatients: meta.totalPatients,
+        }));
+        shouldLoadPage = true;
       } else {
         setIsJobRunning(true);
         setRetrieveError('Deduplication is still in progress. Please try again later.');
@@ -81,9 +121,13 @@ export function useMatchGroups() {
         setRetrieveError(apiErr.message ?? 'Unknown error');
       }
     } finally {
-      if (mountedRef.current) setIsRetrieving(false);
+      setIsRetrieving(false);
     }
-  }, []);
+    // Load first page after spinner clears so the button re-enables immediately
+    if (shouldLoadPage && mountedRef.current) {
+      loadPage(0);
+    }
+  }, [loadPage]);
 
   /**
    * Approve a match group: mark subsumed patients as inactive via ITI-104 Resolve Duplicate.
@@ -213,7 +257,8 @@ export function useMatchGroups() {
     isStarting, isRetrieving, isJobRunning,
     startError, retrieveError, mergeError,
     lastRunTime,
-    runDedup, retrieveResults,
+    totalGroups, totalPatients, currentPage, pageSize,
+    runDedup, retrieveResults, loadPage, handlePageSizeChange,
     approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   };
 }
