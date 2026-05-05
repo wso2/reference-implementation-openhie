@@ -8,6 +8,7 @@ import ballerina/uuid;
 import ballerinax/health.fhir.r4.terminology;
 import ballerina/task;
 import ballerina/file;
+import ballerina/time;
 
 // in Choreo context, this is expected to be a path in a file mount
 configurable string auditLogPath = "/tmp/audit-logs/fhir-audit.log";
@@ -155,6 +156,14 @@ isolated function getLastTimestamp(string[] lines) returns string {
     return "";
 }
 
+isolated function parseIsoTimestamp(string ts) returns time:Utc? {
+    if ts.trim().length() == 0 {
+        return ();
+    }
+    time:Utc|time:Error result = time:utcFromString(ts);
+    return result is time:Error ? () : result;
+}
+
 configurable int port = 9096;
 
 service / on new http:Listener(port) {
@@ -183,6 +192,9 @@ service / on new http:Listener(port) {
 
         json[] allMatching = [];
 
+        time:Utc? sinceUtc = since is string ? parseIsoTimestamp(since) : ();
+        time:Utc? beforeUtc = before is string ? parseIsoTimestamp(before) : ();
+
         foreach string logFile in logFiles {
             // Early exit: we already have enough matching records
             if allMatching.length() >= needed {
@@ -204,11 +216,13 @@ service / on new http:Listener(port) {
             if since is string || before is string {
                 string fileStart = getFirstTimestamp(lines);
                 string fileEnd = getLastTimestamp(lines);
-                if fileStart != "" && before is string && fileStart > before {
+                time:Utc? fileStartUtc = parseIsoTimestamp(fileStart);
+                time:Utc? fileEndUtc = parseIsoTimestamp(fileEnd);
+                if fileStartUtc != () && beforeUtc != () && time:utcDiffSeconds(fileStartUtc, beforeUtc) > 0d {
                     // Entire file is newer than 'before' — skip
                     continue;
                 }
-                if fileEnd != "" && since is string && fileEnd < since {
+                if fileEndUtc != () && sinceUtc != () && time:utcDiffSeconds(fileEndUtc, sinceUtc) < 0d {
                     // Entire file is older than 'since' — for desc, no older file can help either
                     if sortOrder != "asc" {
                         break;
@@ -252,12 +266,14 @@ service / on new http:Listener(port) {
                     if include && (since is string || before is string) {
                         json|error recordedTime = parsed.recorded;
                         if recordedTime is json {
-                            string recorded = recordedTime.toString();
-                            if since is string {
-                                include = recorded > since;
-                            }
-                            if include && before is string {
-                                include = recorded < before;
+                            time:Utc? recordedUtc = parseIsoTimestamp(recordedTime.toString());
+                            if recordedUtc != () {
+                                if sinceUtc != () {
+                                    include = time:utcDiffSeconds(recordedUtc, sinceUtc) > 0d;
+                                }
+                                if include && beforeUtc != () {
+                                    include = time:utcDiffSeconds(recordedUtc, beforeUtc) < 0d;
+                                }
                             }
                         }
                     }

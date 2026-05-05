@@ -115,91 +115,90 @@ public isolated function createPatient(pdqm:PDQmPatient patient)
         return error InvalidPatientError("Patient.identifier is required in the Patient resource(min 1)");
     }
     
-    // Check if any identifier already belongs to an existing (active or deleted) patient
-    foreach pdqm:PDQmPatientIdentifier id in patient.identifier {
-        IdentifierRow|sql:Error idRow = dbClient->queryRow(
-            `SELECT * FROM identifiers WHERE system = ${id.system} AND "value" = ${id.value}`
-        );
-        if idRow is IdentifierRow {
-            // Identifier exists — check if the owning patient is soft-deleted
-            PatientRow|sql:Error ownerRow = dbClient->queryRow(
-                `SELECT * FROM patients WHERE id = ${idRow.patient_id}`
+    // Pre-declare for use after the transaction block
+    string patientId = "";
+    pdqm:PDQmPatient newPatient = patient;
+
+    transaction {
+        // Check if any identifier already belongs to an existing (active or deleted) patient
+        foreach pdqm:PDQmPatientIdentifier id in patient.identifier {
+            IdentifierRow|sql:Error idRow = dbClient->queryRow(
+                `SELECT * FROM identifiers WHERE system = ${id.system} AND "value" = ${id.value}`
             );
-            if ownerRow is PatientRow {
-                if !ownerRow.active {
-                    return error DuplicatePatientError(
-                        string `Cannot create patient: identifier ${id.system}|${id.value} belongs to a deleted patient (ID: ${idRow.patient_id}). Consider reactivating the existing patient instead.`);
-                } else {
-                    return error DuplicatePatientError(
-                        string `Cannot create patient: identifier ${id.system}|${id.value} already exists for active patient (ID: ${idRow.patient_id}).`);
+            if idRow is IdentifierRow {
+                // Identifier exists — check if the owning patient is soft-deleted
+                PatientRow|sql:Error ownerRow = dbClient->queryRow(
+                    `SELECT * FROM patients WHERE id = ${idRow.patient_id}`
+                );
+                if ownerRow is PatientRow {
+                    if !ownerRow.active {
+                        fail error DuplicatePatientError(
+                            string `Cannot create patient: identifier ${id.system}|${id.value} belongs to a deleted patient (ID: ${idRow.patient_id}). Consider reactivating the existing patient instead.`);
+                    } else {
+                        fail error DuplicatePatientError(
+                            string `Cannot create patient: identifier ${id.system}|${id.value} already exists for active patient (ID: ${idRow.patient_id}).`);
+                    }
                 }
             }
         }
-    }
 
-    // Generate ID
-    string patientId = uuid:createType4AsString();
-    string now = time:utcToString(time:utcNow());
-    
-    // Add CR identifier
-    pdqm:PDQmPatient|InvalidPatientError|error addResult = addCRIdentifier(patient, patientId);
-    if addResult is InvalidPatientError|error {
-        return addResult;
-    }
-    pdqm:PDQmPatient newPatient = addResult;
-    
-    newPatient.id = patientId;
+        // Generate ID
+        patientId = uuid:createType4AsString();
+        string now = time:utcToString(time:utcNow());
 
-    if newPatient.active is () {
-        newPatient.active = true;
-    }
-    
-    // Extract search fields
-    string? familyName = getFamily(newPatient);
-    string? givenName = getGiven(newPatient);
-    string? phone = getTelecom(newPatient, "phone");
-    string? email = getTelecom(newPatient, "email");
-    string? city = getAddressField(newPatient, "city");
-    string? state = getAddressField(newPatient, "state");
-    string? postalCode = getAddressField(newPatient, "postalCode");
-    string? country = getAddressField(newPatient, "country");
+        // Add CR identifier
+        newPatient = check addCRIdentifier(patient, patientId);
+        newPatient.id = patientId;
 
-    json|error j =  newPatient.toJson();     // if toJson() can return error in your type
-    //error handling
-    if j is error {
-        return j;
-    }
-    // Ensure meta is properly serialized as JSON
-    json resourceJsonObj = j;
-    json metaJson = {
-        "versionId": "1",
-        "lastUpdated": now
-    };
-    map<json> createMap = <map<json>>resourceJsonObj;
-    createMap["meta"] = metaJson;
-    resourceJsonObj = createMap;
-    string resourceJson = resourceJsonObj.toJsonString();
+        if newPatient.active is () {
+            newPatient.active = true;
+        }
 
+        // Extract search fields
+        string? familyName = getFamily(newPatient);
+        string? givenName = getGiven(newPatient);
+        string? phone = getTelecom(newPatient, "phone");
+        string? email = getTelecom(newPatient, "email");
+        string? city = getAddressField(newPatient, "city");
+        string? state = getAddressField(newPatient, "state");
+        string? postalCode = getAddressField(newPatient, "postalCode");
+        string? country = getAddressField(newPatient, "country");
 
-    // Insert patient
-    _ = check dbClient->execute(`
-        INSERT INTO patients (id, resource_json, active, family_name, given_name, 
-            gender, birth_date, phone, email, city, state, postal_code, country,
-            created_at, updated_at, version)
-        VALUES (${patientId}, ${resourceJson}, ${newPatient.active ?: true}, 
-            ${familyName}, ${givenName}, ${newPatient.gender}, ${newPatient.birthDate},
-            ${phone}, ${email}, ${city}, ${state}, ${postalCode}, ${country}, ${now}, ${now}, 1)
-    `);
-    
-    // Insert identifiers
-    foreach pdqm:PDQmPatientIdentifier id in patient.identifier {
+        // Ensure meta is properly serialized as JSON
+        json resourceJsonObj = newPatient.toJson();
+        json metaJson = {
+            "versionId": "1",
+            "lastUpdated": now
+        };
+        map<json> createMap = <map<json>>resourceJsonObj;
+        createMap["meta"] = metaJson;
+        resourceJsonObj = createMap;
+        string resourceJson = resourceJsonObj.toJsonString();
+
+        // Insert patient
         _ = check dbClient->execute(`
-            INSERT INTO identifiers (patient_id, system, "value")
-            VALUES (${patientId}, ${id.system}, ${id.value})
+            INSERT INTO patients (id, resource_json, active, family_name, given_name,
+                gender, birth_date, phone, email, city, state, postal_code, country,
+                created_at, updated_at, version)
+            VALUES (${patientId}, ${resourceJson}, ${newPatient.active ?: true},
+                ${familyName}, ${givenName}, ${newPatient.gender}, ${newPatient.birthDate},
+                ${phone}, ${email}, ${city}, ${state}, ${postalCode}, ${country}, ${now}, ${now}, 1)
         `);
+
+        // Insert identifiers
+        foreach pdqm:PDQmPatientIdentifier id in patient.identifier {
+            _ = check dbClient->execute(`
+                INSERT INTO identifiers (patient_id, system, "value")
+                VALUES (${patientId}, ${id.system}, ${id.value})
+            `);
+        }
+
+        check commit;
+    } on fail error e {
+        return e;
     }
 
-    // Compute and store blocking keys for fast matching
+    // Compute and store blocking keys for fast matching (non-fatal; runs after commit)
     if blocking.enabled {
         error? bkResult = storeBlockingKeys(patientId, newPatient);
         if bkResult is error {
@@ -357,36 +356,42 @@ public isolated function updatePatient(string id, pdqm:PDQmPatient patient)
     string? country = getAddressField(updatedPatient, "country");
     
     
-    // Update patient
-    _ = check dbClient->execute(`
-        UPDATE patients SET 
-            resource_json = ${resourceJson},
-            active = ${updatedPatient.active ?: true},
-            family_name = ${familyName},
-            given_name = ${givenName},
-            gender = ${updatedPatient.gender},
-            birth_date = ${updatedPatient.birthDate},
-            phone = ${phone},
-            email = ${email},
-            city = ${city},
-            state = ${state},
-            postal_code = ${postalCode},
-            country = ${country},
-            updated_at = ${now},
-            version = ${newVersion}
-        WHERE id = ${id}
-    `);
-    
-    // Replace identifiers
-    _ = check dbClient->execute(`DELETE FROM identifiers WHERE patient_id = ${id}`);
-    foreach pdqm:PDQmPatientIdentifier identifier in updatedPatient.identifier {
+    transaction {
+        // Update patient
         _ = check dbClient->execute(`
-            INSERT INTO identifiers (patient_id, system, "value")
-            VALUES (${id}, ${identifier.system}, ${identifier.value})
+            UPDATE patients SET
+                resource_json = ${resourceJson},
+                active = ${updatedPatient.active ?: true},
+                family_name = ${familyName},
+                given_name = ${givenName},
+                gender = ${updatedPatient.gender},
+                birth_date = ${updatedPatient.birthDate},
+                phone = ${phone},
+                email = ${email},
+                city = ${city},
+                state = ${state},
+                postal_code = ${postalCode},
+                country = ${country},
+                updated_at = ${now},
+                version = ${newVersion}
+            WHERE id = ${id}
         `);
+
+        // Replace identifiers atomically with the update
+        _ = check dbClient->execute(`DELETE FROM identifiers WHERE patient_id = ${id}`);
+        foreach pdqm:PDQmPatientIdentifier identifier in updatedPatient.identifier {
+            _ = check dbClient->execute(`
+                INSERT INTO identifiers (patient_id, system, "value")
+                VALUES (${id}, ${identifier.system}, ${identifier.value})
+            `);
+        }
+
+        check commit;
+    } on fail error e {
+        return e;
     }
 
-    // Recompute blocking keys and invalidate compared pairs
+    // Recompute blocking keys and invalidate compared pairs (non-fatal; runs after commit)
     if blocking.enabled {
         _ = check dbClient->execute(
             `DELETE FROM dedup_compared_pairs WHERE patient_id_1 = ${id} OR patient_id_2 = ${id}`
