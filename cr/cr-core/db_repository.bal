@@ -186,7 +186,7 @@ public isolated function createPatient(pdqm:PDQmPatient patient)
         `);
 
         // Insert identifiers
-        foreach pdqm:PDQmPatientIdentifier id in patient.identifier {
+        foreach pdqm:PDQmPatientIdentifier id in newPatient.identifier {
             _ = check dbClient->execute(`
                 INSERT INTO identifiers (patient_id, system, "value")
                 VALUES (${patientId}, ${id.system}, ${id.value})
@@ -774,34 +774,62 @@ public isolated function searchPatients(
         query = sql:queryConcat(query, ` AND (LOWER(city) LIKE LOWER(${pattern}) OR LOWER(state) LIKE LOWER(${pattern}) OR LOWER(postal_code) LIKE LOWER(${pattern}) OR LOWER(country) LIKE LOWER(${pattern}))`);
     }
     
-    // Order and pagination
-    query = sql:queryConcat(query, ` ORDER BY updated_at DESC LIMIT ${count} OFFSET ${offset}`);
-    
-    // Execute query
-    stream<PatientRow, sql:Error?> rowStream = dbClient->query(query);
-    
-    pdqm:PDQmPatient[] patients = [];
-    check from PatientRow row in rowStream
-        do {
-            pdqm:PDQmPatient|error patient = parsePatient(row.resource_json);
-            if patient is pdqm:PDQmPatient {
-                patients.push(patient);
-            }
-        };
-    
-    // In-memory filter for mothersMaidenName (FHIR extension)
-    if mothersMaidenName is string {
-        pdqm:PDQmPatient[] filteredPatients = [];
-        foreach pdqm:PDQmPatient p in patients {
-            string? maidenName = getMothersMaidenName(p);
-            if maidenName is string && maidenName.toLowerAscii().includes(mothersMaidenName.toLowerAscii()) {
-                filteredPatients.push(p);
-            }
-        }
-        return filteredPatients;
+    // Path A: no mothersMaidenName — single paginated query, unchanged behaviour
+    if mothersMaidenName is () {
+        sql:ParameterizedQuery pagedQuery = sql:queryConcat(query,
+            ` ORDER BY updated_at DESC LIMIT ${count} OFFSET ${offset}`);
+        stream<PatientRow, sql:Error?> rowStream = dbClient->query(pagedQuery);
+        pdqm:PDQmPatient[] patients = [];
+        check from PatientRow row in rowStream
+            do {
+                pdqm:PDQmPatient|error patient = parsePatient(row.resource_json);
+                if patient is pdqm:PDQmPatient {
+                    patients.push(patient);
+                }
+            };
+        return patients;
     }
-    
-    return patients;
+
+    // Path B: mothersMaidenName provided — iterative batch fetching so LIMIT/OFFSET
+    // apply to the maiden-name-filtered set, not the raw DB rows.
+    int batchSize = count * 10;
+    if batchSize < 100 {
+        batchSize = 100;
+    }
+    pdqm:PDQmPatient[] results = [];
+    int matchedSeen = 0;
+    int dbBatchOffset = 0;
+    boolean exhausted = false;
+
+    while results.length() < count && !exhausted {
+        sql:ParameterizedQuery batchQuery = sql:queryConcat(query,
+            ` ORDER BY updated_at DESC LIMIT ${batchSize} OFFSET ${dbBatchOffset}`);
+        stream<PatientRow, sql:Error?> batchStream = dbClient->query(batchQuery);
+
+        int rowsInBatch = 0;
+        check from PatientRow row in batchStream
+            do {
+                rowsInBatch += 1;
+                pdqm:PDQmPatient|error patient = parsePatient(row.resource_json);
+                if patient is pdqm:PDQmPatient {
+                    string? maidenName = getMothersMaidenName(patient);
+                    if maidenName is string &&
+                            maidenName.toLowerAscii().includes(mothersMaidenName.toLowerAscii()) {
+                        matchedSeen += 1;
+                        if matchedSeen > offset {
+                            results.push(patient);
+                        }
+                    }
+                }
+            };
+
+        if rowsInBatch < batchSize {
+            exhausted = true;
+        }
+        dbBatchOffset += batchSize;
+    }
+
+    return results;
 }
 
 
