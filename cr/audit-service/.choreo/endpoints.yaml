@@ -4,7 +4,7 @@ version: 0.1
 # +required List of endpoints to create
 endpoints:
 - name: Audit Service API
-  port: 9093
+  port: 9096
   type: REST
   networkVisibility: Public
   context: /
