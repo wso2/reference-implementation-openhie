@@ -6,12 +6,12 @@ import type { FhirPatient, MatchGroup } from '../types';
 const DEDUP_META_KEY = 'dedupMeta';
 const LAST_RUN_KEY = 'dedupLastRunTime';
 
-function loadMetaFromSession(): { totalGroups: number; totalPatients: number } {
+function loadMetaFromSession(): { totalGroups: number; totalPatients: number; totalGroupedPatients: number } {
   try {
     const stored = sessionStorage.getItem(DEDUP_META_KEY);
-    return stored ? JSON.parse(stored) : { totalGroups: 0, totalPatients: 0 };
+    return stored ? JSON.parse(stored) : { totalGroups: 0, totalPatients: 0, totalGroupedPatients: 0 };
   } catch {
-    return { totalGroups: 0, totalPatients: 0 };
+    return { totalGroups: 0, totalPatients: 0, totalGroupedPatients: 0 };
   }
 }
 
@@ -20,6 +20,9 @@ export function useMatchGroups() {
   const [matchGroups, setMatchGroups] = useState<MatchGroup[]>([]);
   const [totalGroups, setTotalGroups] = useState(savedMeta.totalGroups);
   const [totalPatients, setTotalPatients] = useState(savedMeta.totalPatients);
+  const [totalGroupedPatients, setTotalGroupedPatients] = useState(savedMeta.totalGroupedPatients);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [rejectedCount, setRejectedCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSizeState] = useState(20);
 
@@ -97,6 +100,9 @@ export function useMatchGroups() {
         const { meta } = outcome;
         setTotalGroups(meta.totalGroups);
         setTotalPatients(meta.totalPatients);
+        setTotalGroupedPatients(meta.totalGroupedPatients ?? 0);
+        setApprovedCount(0);
+        setRejectedCount(0);
         setIsJobRunning(false);
         const runTime = meta.timestamp || new Date().toISOString();
         setLastRunTime(runTime);
@@ -104,6 +110,7 @@ export function useMatchGroups() {
         sessionStorage.setItem(DEDUP_META_KEY, JSON.stringify({
           totalGroups: meta.totalGroups,
           totalPatients: meta.totalPatients,
+          totalGroupedPatients: meta.totalGroupedPatients ?? 0,
         }));
         shouldLoadPage = true;
       } else {
@@ -162,6 +169,7 @@ export function useMatchGroups() {
             : g
         )
       );
+      setApprovedCount((c) => c + 1);
     } catch (err) {
       setMergeError((err as Error).message);
     } finally {
@@ -194,6 +202,7 @@ export function useMatchGroups() {
             : g
         )
       );
+      setRejectedCount((c) => c + 1);
     } catch (err) {
       setMergeError((err as Error).message);
     }
@@ -245,6 +254,7 @@ export function useMatchGroups() {
 
       const mergedIds = patientsToMerge.map((p) => p.id!);
       removeFromGroup(groupId, mergedIds);
+      setApprovedCount((c) => c + 1);
     } catch (err) {
       setMergeError((err as Error).message);
     } finally {
@@ -257,7 +267,9 @@ export function useMatchGroups() {
     isStarting, isRetrieving, isJobRunning,
     startError, retrieveError, mergeError,
     lastRunTime,
-    totalGroups, totalPatients, currentPage, pageSize,
+    totalGroups, totalPatients, totalGroupedPatients,
+    approvedCount, rejectedCount,
+    currentPage, pageSize,
     runDedup, retrieveResults, loadPage, handlePageSizeChange,
     approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   };

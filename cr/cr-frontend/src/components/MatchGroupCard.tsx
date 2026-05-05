@@ -150,7 +150,7 @@ export default function MatchGroupCard({
                   e.stopPropagation();
                   onApprove();
                 }}
-                sx={{ fontSize: 13 }}
+                sx={{ fontSize: 13, opacity: 0.75 }}
               >
                 Review &amp; Merge
               </Button>
@@ -164,6 +164,7 @@ export default function MatchGroupCard({
                 }}
                 sx={{
                   fontSize: 13,
+                  opacity: 0.75,
                   bgcolor: 'error.light',
                   color: 'error.main',
                   '&:hover': { bgcolor: '#fecaca' },
@@ -316,6 +317,7 @@ export default function MatchGroupCard({
                   }}
                   sx={{
                     fontSize: 13,
+                    opacity: 0.75,
                     bgcolor: 'error.light',
                     color: 'error.main',
                     '&:hover': { bgcolor: '#fecaca' },
@@ -335,7 +337,7 @@ export default function MatchGroupCard({
                     onMergeSelected(group, selectedPatients);
                     setSelected(new Set());
                   }}
-                  sx={{ fontSize: 13 }}
+                  sx={{ fontSize: 13, opacity: 0.75 }}
                 >
                   Merge Selected ({selectedCount})
                 </Button>

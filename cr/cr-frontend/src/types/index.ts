@@ -111,6 +111,7 @@ export interface DedupJobMeta {
   jobId: string;
   totalPatients: number;
   totalGroups: number;
+  totalGroupedPatients: number;
   threshold: number;
   timestamp: string;
   completedAt: string;
@@ -119,6 +120,7 @@ export interface DedupJobMeta {
 export interface DedupResult {
   totalPatients: number;
   totalGroups: number;
+  totalGroupedPatients: number;
   threshold: number;
   timestamp: string;
   groups: MatchGroup[];

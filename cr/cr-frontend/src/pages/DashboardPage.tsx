@@ -26,7 +26,8 @@ export default function DashboardPage() {
     isStarting, isRetrieving, isJobRunning,
     startError, retrieveError, mergeError,
     lastRunTime,
-    totalGroups, currentPage, pageSize,
+    totalGroups, totalGroupedPatients, approvedCount, rejectedCount,
+    currentPage, pageSize,
     runDedup, retrieveResults, loadPage, handlePageSizeChange,
     approveGroup, rejectGroup, removeFromGroup, mergeSubset,
   } = useMatchGroups();
@@ -54,12 +55,12 @@ export default function DashboardPage() {
 
   const stats = useMemo(
     () => [
-      { value: matchGroups.filter((m) => m.status === 'pending').length, label: 'Pending Review' },
-      { value: matchGroups.filter((m) => m.status === 'approved').length, label: 'Approved', color: '#059669' },
-      { value: matchGroups.filter((m) => m.status === 'rejected').length, label: 'Rejected', color: '#dc2626' },
-      { value: matchGroups.reduce((sum, g) => sum + g.patients.length, 0), label: 'Total Records' },
+      { value: Math.max(0, totalGroups - approvedCount - rejectedCount), label: 'Pending Review' },
+      { value: approvedCount, label: 'Approved', color: '#059669' },
+      { value: rejectedCount, label: 'Rejected', color: '#dc2626' },
+      { value: totalGroupedPatients, label: 'Total Records' },
     ],
-    [matchGroups]
+    [totalGroups, totalGroupedPatients, approvedCount, rejectedCount]
   );
 
   const openMergeModal = (group: MatchGroup) => {
@@ -153,6 +154,7 @@ export default function DashboardPage() {
           startIcon={isStarting ? <CircularProgress size={18} color="inherit" /> : <Play size={18} />}
           onClick={handleRunDedup}
           disabled={isStarting || isRetrieving || isJobRunning}
+          sx={{ opacity: 0.75 }}
         >
           {isStarting ? 'Starting...' : 'Run Deduplication'}
         </Button>
@@ -161,6 +163,7 @@ export default function DashboardPage() {
           startIcon={isRetrieving ? <CircularProgress size={18} color="inherit" /> : <RefreshCw size={18} />}
           onClick={handleRetrieveResults}
           disabled={isStarting || isRetrieving}
+          sx={{ opacity: 0.75 }}
         >
           {isRetrieving ? 'Retrieving...' : 'Retrieve Results'}
         </Button>

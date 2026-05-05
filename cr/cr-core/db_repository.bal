@@ -1353,7 +1353,21 @@ function executeDedupAsync(string jobId, string agentName, decimal threshold) {
         }
     }
 
-    DedupResult|error result = deduplicatePatients(threshold);
+    DedupResult? lastResult = ();
+    lock {
+        string latestCompletedAt = "";
+        foreach var [_, job] in dedupJobs.entries() {
+            if job.status == "completed" && job.result is DedupResult {
+                string completedAt = job.completedAt ?: "";
+                if completedAt > latestCompletedAt {
+                    latestCompletedAt = completedAt;
+                    lastResult = <DedupResult>job.result;
+                }
+            }
+        }
+    }
+
+    DedupResult|error result = deduplicatePatients(threshold, lastResult);
     string now = time:utcToString(time:utcNow());
 
     lock {
@@ -1459,14 +1473,16 @@ public type DedupGroup record {|
 
 # Full dedup result returned to client
 #
-# + totalPatients - field description  
-# + totalGroups - field description  
-# + threshold - field description  
-# + timestamp - field description  
+# + totalPatients - field description
+# + totalGroups - field description
+# + totalGroupedPatients - total number of patient records across all groups
+# + threshold - field description
+# + timestamp - field description
 # + groups - field description
 public type DedupResult record {|
     int totalPatients;
     int totalGroups;
+    int totalGroupedPatients;
     decimal threshold;
     string timestamp;
     DedupGroup[] groups;
@@ -1579,8 +1595,9 @@ isolated function compareFields(pdqm:PDQmPatient a, pdqm:PDQmPatient b) returns 
 # and tracks previously compared pairs to avoid redundant work on subsequent runs.
 #
 # + threshold - Minimum score to consider a match (default 0.6)
+# + lastResult - Result from the previous completed job; returned as-is when there are no new pairs
 # + return - DedupResult containing all match groups, or error
-public function deduplicatePatients(decimal threshold = 0.6d) returns DedupResult|error {
+public function deduplicatePatients(decimal threshold = 0.6d, DedupResult? lastResult = ()) returns DedupResult|error {
 
     // If blocking is disabled, fall back to full-scan dedup
     if !blocking.enabled {
@@ -1634,6 +1651,11 @@ public function deduplicatePatients(decimal threshold = 0.6d) returns DedupResul
         };
 
     log:printInfo(string `Dedup: ${newPairs.length()} new candidate pairs to compare`);
+
+    if newPairs.length() == 0 && lastResult != () && lastResult.totalGroups > 0 {
+        log:printInfo(string `Dedup: No new pairs to score — reusing cached result (${lastResult.totalGroups} groups)`);
+        return lastResult;
+    }
 
     // Step 4: Score new pairs with a patient cache to avoid repeated DB reads
     map<pdqm:PDQmPatient> patientCache = {};
@@ -1761,9 +1783,15 @@ public function deduplicatePatients(decimal threshold = 0.6d) returns DedupResul
         groupIndex += 1;
     }
 
+    int totalGroupedPatients = 0;
+    foreach DedupGroup g in groups {
+        totalGroupedPatients += g.patients.length();
+    }
+
     return {
         totalPatients: totalPatients,
         totalGroups: groups.length(),
+        totalGroupedPatients: totalGroupedPatients,
         threshold: threshold,
         timestamp: now,
         groups: groups
@@ -1969,9 +1997,15 @@ function deduplicatePatientsFull(decimal threshold = 0.6d) returns DedupResult|e
         }
     }
 
+    int totalGroupedPatientsFull = 0;
+    foreach DedupGroup g in groups {
+        totalGroupedPatientsFull += g.patients.length();
+    }
+
     return {
         totalPatients: totalPatients,
         totalGroups: groups.length(),
+        totalGroupedPatients: totalGroupedPatientsFull,
         threshold: threshold,
         timestamp: now,
         groups: groups
@@ -2047,6 +2081,117 @@ public isolated function hasSharedExclusion(string patientId1, string patientId2
     }
 
     return false;
+}
+
+# Remove a merged/inactive patient from all cached dedup job results.
+# Groups with fewer than 2 patients after removal are dropped entirely.
+# + patientId - CRUID of the patient to evict
+public function evictPatientFromDedupCache(string patientId) {
+    lock {
+        string[] jobIds = dedupJobs.keys();
+        foreach string jobId in jobIds {
+            DedupJob? job = dedupJobs[jobId];
+            if !(job is DedupJob) || !(job.result is DedupResult) {
+                continue;
+            }
+            DedupResult r = <DedupResult>job.result;
+            DedupGroup[] updatedGroups = [];
+            int groupedCount = 0;
+            foreach DedupGroup grp in r.groups {
+                json[] remaining = grp.patients.filter(
+                    isolated function(json p) returns boolean {
+                        if p is map<json> {
+                            return p["id"] != patientId;
+                        }
+                        return true;
+                    }
+                );
+                if remaining.length() >= 2 {
+                    updatedGroups.push({
+                        id: grp.id,
+                        status: grp.status,
+                        score: grp.score,
+                        matchGrade: grp.matchGrade,
+                        createdAt: grp.createdAt,
+                        patients: remaining,
+                        matchedFields: grp.matchedFields,
+                        unmatchedFields: grp.unmatchedFields
+                    });
+                    groupedCount += remaining.length();
+                }
+            }
+            int prevTotal = job.totalPatients ?: r.totalPatients;
+            dedupJobs[jobId] = {
+                jobId: job.jobId,
+                status: job.status,
+                startedAt: job.startedAt,
+                completedAt: job.completedAt,
+                totalPatients: prevTotal - 1,
+                totalGroups: updatedGroups.length(),
+                result: {
+                    totalPatients: r.totalPatients - 1,
+                    totalGroups: updatedGroups.length(),
+                    totalGroupedPatients: groupedCount,
+                    threshold: r.threshold,
+                    timestamp: r.timestamp,
+                    groups: updatedGroups
+                },
+                errorMessage: job.errorMessage,
+                startedBy: job.startedBy
+            };
+        }
+    }
+}
+
+# Remove any cached group that contains both of the given patient IDs (rejected pair).
+# Neither patient is removed from the system — only the group linking them is dropped.
+# + patientId1 - First patient CRUID of the rejected pair
+# + patientId2 - Second patient CRUID of the rejected pair
+public function evictRejectedGroupFromDedupCache(string patientId1, string patientId2) {
+    lock {
+        string[] jobIds = dedupJobs.keys();
+        foreach string jobId in jobIds {
+            DedupJob? job = dedupJobs[jobId];
+            if !(job is DedupJob) || !(job.result is DedupResult) {
+                continue;
+            }
+            DedupResult r = <DedupResult>job.result;
+            DedupGroup[] updatedGroups = [];
+            int groupedCount = 0;
+            foreach DedupGroup grp in r.groups {
+                boolean hasPid1 = grp.patients.some(
+                    isolated function(json p) returns boolean =>
+                        p is map<json> && p["id"] == patientId1
+                );
+                boolean hasPid2 = grp.patients.some(
+                    isolated function(json p) returns boolean =>
+                        p is map<json> && p["id"] == patientId2
+                );
+                if !(hasPid1 && hasPid2) {
+                    updatedGroups.push(grp);
+                    groupedCount += grp.patients.length();
+                }
+            }
+            dedupJobs[jobId] = {
+                jobId: job.jobId,
+                status: job.status,
+                startedAt: job.startedAt,
+                completedAt: job.completedAt,
+                totalPatients: job.totalPatients,
+                totalGroups: updatedGroups.length(),
+                result: {
+                    totalPatients: r.totalPatients,
+                    totalGroupedPatients: groupedCount,
+                    totalGroups: updatedGroups.length(),
+                    threshold: r.threshold,
+                    timestamp: r.timestamp,
+                    groups: updatedGroups
+                },
+                errorMessage: job.errorMessage,
+                startedBy: job.startedBy
+            };
+        }
+    }
 }
 
 # Close the database connection and release resources

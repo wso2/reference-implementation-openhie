@@ -340,6 +340,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
                     "jobId": jobId,
                     "totalPatients": fullResult.totalPatients,
                     "totalGroups": fullResult.totalGroups,
+                    "totalGroupedPatients": fullResult.totalGroupedPatients,
                     "threshold": <float>fullResult.threshold,
                     "timestamp": fullResult.timestamp,
                     "completedAt": completedAt
@@ -429,6 +430,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
                     return {
                         "totalPatients": r.totalPatients,
                         "totalGroups": r.totalGroups,
+                        "totalGroupedPatients": r.totalGroupedPatients,
                         "threshold": <float>r.threshold,
                         "timestamp": r.timestamp,
                         "groups": page.toJson(),
@@ -500,6 +502,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
             return <http:InternalServerError>{body: errorOutcome("Failed to reject match")};
         }
 
+        evictRejectedGroupFromDedupCache(pid1, pid2);
         log:printInfo(string `Dedup match rejected: ${pid1} <-> ${pid2} (decision: ${decisionId})`);
 
         return {
@@ -884,6 +887,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
                 return <http:InternalServerError>{body: errorOutcome("Resolve duplicate failed")};
             }
 
+            evictPatientFromDedupCache(existingId);
             log:printInfo(string `ITI-104: Resolved duplicate Patient/${existingId} → replaced-by ${survivingIdentifier}`);
             auditMerge(existingId, survivingResults[0].id ?: survivingIdentifier, agentName, true);
 
