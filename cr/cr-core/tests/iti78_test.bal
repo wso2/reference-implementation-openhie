@@ -744,19 +744,12 @@ function testSearchResponseContentType() returns error? {
 
 @test:Config {groups: ["iti78", "auth"]}
 function testSearchWithViewerRole() returns error? {
-    // Note: The current implementation restricts search to ROLE_ADMIN only.
-    // Per ITI-78, search is a read-only operation — both roles should work.
-    // This test documents the current behavior.
     http:Response response = check testClient->get("/Patient?family=Smith", {
         "Authorization": string `Bearer ${viewerToken}`
     });
 
-    // If viewers are denied, the service returns 403.
-    // This test checks the current behavior — adjust if the policy changes.
-    boolean isAllowed = response.statusCode == 200;
-    boolean isDenied = response.statusCode == 403;
-    test:assertTrue(isAllowed || isDenied,
-        string `Viewer search should return 200 or 403, got ${response.statusCode}`);
+    test:assertEquals(response.statusCode, 200,
+        string `Viewer search must return 200, got ${response.statusCode}`);
 }
 
 // ============================================================

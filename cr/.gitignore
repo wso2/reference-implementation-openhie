@@ -1,6 +1,8 @@
 # Ballerina build artifacts
 target/
 **/target/
+output/
+**/output/
 
 # Compiled files
 *.class

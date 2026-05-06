@@ -1069,8 +1069,22 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
                             "conditionalUpdate": true,
                             // ITI-104 §2.3.104.4.1.3: conditionalDelete SHALL be advertised when Remove Patient is supported
                             "conditionalDelete": "single",
+                            // ITI-78 §2.3.78.4.1.2.3: SHALL declare all supported search parameters
                             "searchParam": [
-                                {"name": "identifier",       "type": "string"}
+                                {"name": "_id",                "type": "token"},
+                                {"name": "active",             "type": "token"},
+                                {"name": "family",             "type": "string"},
+                                {"name": "given",              "type": "string"},
+                                {"name": "identifier",         "type": "token"},
+                                {"name": "telecom",            "type": "token"},
+                                {"name": "birthdate",          "type": "date"},
+                                {"name": "address",            "type": "string"},
+                                {"name": "address-city",       "type": "string"},
+                                {"name": "address-country",    "type": "string"},
+                                {"name": "address-postalcode", "type": "string"},
+                                {"name": "address-state",      "type": "string"},
+                                {"name": "gender",             "type": "token"},
+                                {"name": "mothersMaidenName",  "type": "string"}
                             ],
                             "operation": [
                                 {

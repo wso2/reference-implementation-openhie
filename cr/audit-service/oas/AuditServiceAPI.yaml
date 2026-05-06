@@ -1,18 +1,10 @@
 openapi: 3.0.0
 info:
   title: Audit Service API
-  description: This API allows posting audit events.
+  description: This API allows posting and retrieving audit events.
   version: 1.0.0
 servers:
   - url: http://localhost:9093
-info:
-  title: Audit Service API
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
 security:
   - bearerAuth: []
 paths:
@@ -96,6 +88,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditEvent'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     InternalAuditEvent:
       type: object
