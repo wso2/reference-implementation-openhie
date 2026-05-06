@@ -5,6 +5,16 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:9093
+info:
+  title: Audit Service API
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
 paths:
   /audits:
     get:
