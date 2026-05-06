@@ -665,7 +665,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         // but for identifier searches just use result length (identifier is an exact match)
         int total = results.length();
         if identifier is () {
-            int|error countResult = countFilteredPatients(family, given, gender, birthdate, telecom, address, city, state, postalCode, country, active);
+            int|error countResult = countFilteredPatients(family, given, gender, birthdate, telecom, address, city, state, postalCode, country, mothersMaidenName = mothersMaidenName, active = active);
             if countResult is int {
                 total = countResult;
             }

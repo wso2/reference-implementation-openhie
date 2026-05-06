@@ -28,6 +28,18 @@ public type DatabaseProvider object {
         string pid1, string pid2, string now, decimal score
     ) returns sql:ParameterizedQuery;
 
+    # Returns an upsert query for the dedup_pair_decisions table.
+    # H2 uses MERGE INTO; PostgreSQL uses INSERT ... ON CONFLICT DO UPDATE.
+    # + pid1       - first patient ID (normalized, always ≤ pid2)
+    # + pid2       - second patient ID
+    # + decisionId - generated UUID for this decision
+    # + now        - ISO timestamp string (used for created_at, updated_at, resolved_at)
+    # + rejectedBy - user/agent performing the rejection
+    # + return     - parameterized upsert query
+    public function getUpsertPairDecision(
+        string pid1, string pid2, string decisionId, string now, string rejectedBy
+    ) returns sql:ParameterizedQuery;
+
     # Returns the database type identifier ("h2" or "postgresql").
     public function getDatabaseType() returns string;
 };

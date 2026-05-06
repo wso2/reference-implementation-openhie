@@ -111,5 +111,17 @@ public class H2DatabaseProvider {
                 VALUES (${pid1}, ${pid2}, ${now}, ${score})`;
     }
 
+    public function getUpsertPairDecision(
+        string pid1, string pid2, string decisionId, string now, string rejectedBy
+    ) returns sql:ParameterizedQuery {
+        return `MERGE INTO dedup_pair_decisions (
+                    patient_id_1, patient_id_2, decision_id, status, active,
+                    created_at, updated_at, resolved_at, created_by, resolved_by, resolution_reason
+                ) VALUES (
+                    ${pid1}, ${pid2}, ${decisionId}, 'rejected', false,
+                    ${now}, ${now}, ${now}, ${rejectedBy}, ${rejectedBy}, 'manual_not_a_match'
+                )`;
+    }
+
     public function getDatabaseType() returns string => "h2";
 }

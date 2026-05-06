@@ -1075,6 +1075,8 @@ isolated function matchPatientsFull(
 # + state - State filter
 # + postalCode - Postal code filter
 # + country - Country filter
+# + identifier - Identifier filter (system|value format)
+# + mothersMaidenName - Mother's maiden name filter (in-memory substring match)
 # + active - Active status filter
 # + return - the count or an error
 public isolated function countFilteredPatients(
@@ -1088,8 +1090,45 @@ public isolated function countFilteredPatients(
     string? state = (),
     string? postalCode = (),
     string? country = (),
+    string? identifier = (),
+    string? mothersMaidenName = (),
     boolean? active = true
 ) returns int|error {
+    if identifier is string {
+        int? pipeIdx = identifier.indexOf("|");
+        if pipeIdx is int {
+            string sys = identifier.substring(0, pipeIdx);
+            string val = identifier.substring(pipeIdx + 1);
+            if val.startsWith("Patient/") {
+                val = val.substring(8);
+            }
+            if sys == baseUrl {
+                pdqm:PDQmPatient|PatientNotFoundError|error directResult = getPatientById(val);
+                if directResult is pdqm:PDQmPatient {
+                    return 1;
+                }
+                if directResult is PatientNotFoundError {
+                    return 0;
+                }
+                return directResult;
+            }
+            sql:ParameterizedQuery idCountQuery = `
+                SELECT COUNT(*) as count FROM patients p
+                INNER JOIN identifiers i ON p.id = i.patient_id
+                WHERE i.system = ${sys} AND i."value" = ${val}`;
+            if active is boolean {
+                idCountQuery = sql:queryConcat(idCountQuery, ` AND p.active = ${active}`);
+            }
+            record {|int count;|}|sql:Error idResult = dbClient->queryRow(idCountQuery);
+            if idResult is sql:Error {
+                return idResult;
+            }
+            return idResult.count;
+        } else {
+            return 0;
+        }
+    }
+
     sql:ParameterizedQuery query = `SELECT COUNT(*) as count FROM patients WHERE 1=1`;
 
     if active is boolean {
@@ -1129,6 +1168,23 @@ public isolated function countFilteredPatients(
     if address is string {
         string pattern = "%" + address + "%";
         query = sql:queryConcat(query, ` AND (LOWER(city) LIKE LOWER(${pattern}) OR LOWER(state) LIKE LOWER(${pattern}) OR LOWER(postal_code) LIKE LOWER(${pattern}) OR LOWER(country) LIKE LOWER(${pattern}))`);
+    }
+
+    if mothersMaidenName is string {
+        stream<PatientRow, sql:Error?> rowStream = dbClient->query(query);
+        int matchCount = 0;
+        check from PatientRow row in rowStream
+            do {
+                pdqm:PDQmPatient|error patient = parsePatient(row.resource_json);
+                if patient is pdqm:PDQmPatient {
+                    string? maidenName = getMothersMaidenName(patient);
+                    if maidenName is string &&
+                            maidenName.toLowerAscii().includes(mothersMaidenName.toLowerAscii()) {
+                        matchCount += 1;
+                    }
+                }
+            };
+        return matchCount;
     }
 
     record {|int count;|}|sql:Error result = dbClient->queryRow(query);
@@ -2062,14 +2118,20 @@ public function rejectMatch(string patientId1, string patientId2, string rejecte
     PatientRow|sql:Error row1 = dbClient->queryRow(
         `SELECT * FROM patients WHERE id = ${patientId1}`
     );
-    if row1 is sql:Error {
+    if row1 is sql:NoRowsError {
         return error PatientNotFoundError(string `Patient ${patientId1} not found`);
+    }
+    if row1 is sql:Error {
+        return row1;
     }
     PatientRow|sql:Error row2 = dbClient->queryRow(
         `SELECT * FROM patients WHERE id = ${patientId2}`
     );
-    if row2 is sql:Error {
+    if row2 is sql:NoRowsError {
         return error PatientNotFoundError(string `Patient ${patientId2} not found`);
+    }
+    if row2 is sql:Error {
+        return row2;
     }
 
     record {|string left; string right;|} pair = normalizePair(patientId1, patientId2);
@@ -2077,21 +2139,7 @@ public function rejectMatch(string patientId1, string patientId2, string rejecte
     string decisionId = uuid:createType4AsString();
 
     _ = check dbClient->execute(
-        `INSERT INTO dedup_pair_decisions (
-            patient_id_1, patient_id_2, decision_id, status, active,
-            created_at, updated_at, resolved_at, created_by, resolved_by, resolution_reason
-        ) VALUES (
-            ${pair.left}, ${pair.right}, ${decisionId}, 'rejected', false,
-            ${now}, ${now}, ${now}, ${rejectedBy}, ${rejectedBy}, 'manual_not_a_match'
-        )
-        ON CONFLICT (patient_id_1, patient_id_2) DO UPDATE SET
-            decision_id        = ${decisionId},
-            status             = 'rejected',
-            active             = false,
-            updated_at         = ${now},
-            resolved_at        = ${now},
-            resolved_by        = ${rejectedBy},
-            resolution_reason  = 'manual_not_a_match'`
+        dbProvider.getUpsertPairDecision(pair.left, pair.right, decisionId, now, rejectedBy)
     );
 
     log:printInfo(string `Match rejected: ${patientId1} <-> ${patientId2} (decision: ${decisionId}, by: ${rejectedBy})`);
