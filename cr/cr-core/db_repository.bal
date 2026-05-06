@@ -1379,8 +1379,7 @@ isolated function getMothersMaidenName(pdqm:PDQmPatient patient) returns string?
     if extensions is r4:Extension[] {
         foreach r4:Extension ext in extensions {
             if ext.url == "http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName" {
-                // The value is stored as valueString
-                anydata val = ext.get("valueString");
+                string? val = ext?.valueString;
                 if val is string {
                     return val;
                 }
