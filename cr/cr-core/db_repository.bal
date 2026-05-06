@@ -86,6 +86,7 @@ type BlockingKeyRow record {|
 public type PatientNotFoundError distinct error;
 public type DuplicatePatientError distinct error;
 public type InvalidPatientError distinct error;
+public type ConcurrencyError distinct error;
 
 // ============================================================
 // DATABASE INITIALIZATION
@@ -269,96 +270,79 @@ public isolated function getPatientByIdentifier(string system, string value)
 # + id - CRUID Patient 
 # + patient - Updated patient data
 # + return - Updated patient or error
-public isolated function updatePatient(string id, pdqm:PDQmPatient patient) 
-        returns pdqm:PDQmPatient|PatientNotFoundError|DuplicatePatientError|InvalidPatientError|error {
-    
-    // Validate identifier
+public isolated function updatePatient(string id, pdqm:PDQmPatient patient)
+        returns pdqm:PDQmPatient|PatientNotFoundError|DuplicatePatientError|InvalidPatientError|ConcurrencyError|error {
+
+    // Validate identifier (pure check, no DB read — safe outside transaction)
     if patient.identifier.length() == 0 {
         return error InvalidPatientError("Patient.identifier is required (min 1)");
     }
-    
-    // Check exists
-    PatientRow|sql:Error existingRow = dbClient->queryRow(
-        `SELECT * FROM patients WHERE id = ${id}`
-    );
-    
-    if existingRow is sql:NoRowsError {
-        return error PatientNotFoundError(string `Patient ${id} not found`);
-    }
-    if existingRow is sql:Error {
-        return existingRow;
-    }
-    
-    string now = time:utcToString(time:utcNow());
-    int newVersion = existingRow.'version + 1;
 
-    // Parse existing patient from DB and merge with incoming payload
-    pdqm:PDQmPatient|error existingPatient = parsePatient(existingRow.resource_json);
-    if existingPatient is error {
-        return existingPatient;
-    }
+    // Populated inside the transaction; used for post-commit work and return value.
+    json resourceJsonObj = {};
 
-    // Field-level merge: preserves existing fields not in payload, merges identifiers as union
-    pdqm:PDQmPatient|error mergeResult = mergePatientFields(existingPatient, patient);
-    if mergeResult is error {
-        return mergeResult;
-    }
-    pdqm:PDQmPatient updatedPatient = mergeResult;
-    updatedPatient.id = id;
-
-    // Check merged identifiers don't conflict with other patients
-    foreach pdqm:PDQmPatientIdentifier mergedId in updatedPatient.identifier {
-        IdentifierRow|sql:Error idRow = dbClient->queryRow(
-            `SELECT * FROM identifiers
-             WHERE system = ${mergedId.system} AND "value" = ${mergedId.value} AND patient_id != ${id}`
-        );
-        if idRow is IdentifierRow {
-            return error DuplicatePatientError(
-                string `Identifier ${mergedId.system}|${mergedId.value} belongs to another patient`);
-        }
-    }
-
-    // Check if CR identifier exists, if not add it
-    boolean hasCRIdentifier = false;
-    foreach pdqm:PDQmPatientIdentifier crid in updatedPatient.identifier {
-        if crid.system == baseUrl {
-            hasCRIdentifier = true;
-            break;
-        }
-    }
-
-    if !hasCRIdentifier {
-        pdqm:PDQmPatient|InvalidPatientError|error addResult = addCRIdentifier(updatedPatient, id);
-        if addResult is InvalidPatientError|error {
-            return addResult;
-        }
-        updatedPatient = addResult;
-    }
-
-    // Build resource JSON with updated meta
-    json resourceJsonObj = updatedPatient.toJson();
-    json metaJson = {
-        "versionId": newVersion.toString(),
-        "lastUpdated": now
-    };
-    map<json> resourceMap = <map<json>>resourceJsonObj;
-    resourceMap["meta"] = metaJson;
-    resourceJsonObj = resourceMap;
-    string resourceJson = resourceJsonObj.toJsonString();
-    // Extract search fields
-    string? familyName = getFamily(updatedPatient);
-    string? givenName = getGiven(updatedPatient);
-    string? phone = getTelecom(updatedPatient, "phone");
-    string? email = getTelecom(updatedPatient, "email");
-    string? city = getAddressField(updatedPatient, "city");
-    string? state = getAddressField(updatedPatient, "state");
-    string? postalCode = getAddressField(updatedPatient, "postalCode");
-    string? country = getAddressField(updatedPatient, "country");
-    
-    
     transaction {
-        // Update patient
-        _ = check dbClient->execute(`
+        // Read inside the transaction so the version we act on is consistent with the UPDATE.
+        PatientRow|sql:Error existingRow = dbClient->queryRow(
+            `SELECT * FROM patients WHERE id = ${id}`
+        );
+        if existingRow is sql:NoRowsError {
+            fail error PatientNotFoundError(string `Patient ${id} not found`);
+        }
+        if existingRow is sql:Error {
+            fail existingRow;
+        }
+
+        string now = time:utcToString(time:utcNow());
+        int newVersion = existingRow.'version + 1;
+
+        // Parse existing patient from DB and merge with incoming payload
+        pdqm:PDQmPatient existingPatient = check parsePatient(existingRow.resource_json);
+        pdqm:PDQmPatient updatedPatient = check mergePatientFields(existingPatient, patient);
+        updatedPatient.id = id;
+
+        // Check merged identifiers don't conflict with other patients
+        foreach pdqm:PDQmPatientIdentifier mergedId in updatedPatient.identifier {
+            IdentifierRow|sql:Error idRow = dbClient->queryRow(
+                `SELECT * FROM identifiers
+                 WHERE system = ${mergedId.system} AND "value" = ${mergedId.value} AND patient_id != ${id}`
+            );
+            if idRow is IdentifierRow {
+                fail error DuplicatePatientError(
+                    string `Identifier ${mergedId.system}|${mergedId.value} belongs to another patient`);
+            }
+        }
+
+        // Check if CR identifier exists; if not, add it
+        boolean hasCRIdentifier = false;
+        foreach pdqm:PDQmPatientIdentifier crid in updatedPatient.identifier {
+            if crid.system == baseUrl {
+                hasCRIdentifier = true;
+                break;
+            }
+        }
+        if !hasCRIdentifier {
+            updatedPatient = check addCRIdentifier(updatedPatient, id);
+        }
+
+        // Build resource JSON with updated meta
+        map<json> resourceMap = <map<json>>updatedPatient.toJson();
+        resourceMap["meta"] = {"versionId": newVersion.toString(), "lastUpdated": now};
+        resourceJsonObj = resourceMap;
+        string resourceJson = resourceJsonObj.toJsonString();
+
+        // Extract search fields
+        string? familyName = getFamily(updatedPatient);
+        string? givenName = getGiven(updatedPatient);
+        string? phone = getTelecom(updatedPatient, "phone");
+        string? email = getTelecom(updatedPatient, "email");
+        string? city = getAddressField(updatedPatient, "city");
+        string? state = getAddressField(updatedPatient, "state");
+        string? postalCode = getAddressField(updatedPatient, "postalCode");
+        string? country = getAddressField(updatedPatient, "country");
+
+        // Version-pinned UPDATE: only succeeds when no concurrent modification has occurred.
+        sql:ExecutionResult updateResult = check dbClient->execute(`
             UPDATE patients SET
                 resource_json = ${resourceJson},
                 active = ${updatedPatient.active ?: true},
@@ -374,8 +358,12 @@ public isolated function updatePatient(string id, pdqm:PDQmPatient patient)
                 country = ${country},
                 updated_at = ${now},
                 version = ${newVersion}
-            WHERE id = ${id}
+            WHERE id = ${id} AND version = ${existingRow.'version}
         `);
+        if updateResult.affectedRowCount != 1 {
+            fail error ConcurrencyError(
+                string `Patient ${id} was modified concurrently; please re-fetch and retry`);
+        }
 
         // Replace identifiers atomically with the update
         _ = check dbClient->execute(`DELETE FROM identifiers WHERE patient_id = ${id}`);

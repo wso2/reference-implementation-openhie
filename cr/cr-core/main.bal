@@ -897,9 +897,9 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         // ------------------------------------------------
         // Normal UPDATE if found (not a merge)
         // ------------------------------------------------
-        pdqm:PDQmPatient|PatientNotFoundError|DuplicatePatientError|InvalidPatientError|error result =
+        pdqm:PDQmPatient|PatientNotFoundError|DuplicatePatientError|InvalidPatientError|ConcurrencyError|error result =
             updatePatient(existingId, payload);
-        
+
         if result is PatientNotFoundError {
             auditUpdate(existingId, agentName, false, string `Patient ${existingId} not found`);
             return <http:NotFound>{body: errorOutcome(string `Patient ${existingId} not found`)};
@@ -911,6 +911,10 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
         if result is InvalidPatientError {
             auditUpdate(existingId, agentName, false, "Invalid patient: " + result.message());
             return <http:BadRequest>{body: errorOutcome(result.message())};
+        }
+        if result is ConcurrencyError {
+            auditUpdate(existingId, agentName, false, "Concurrency conflict: " + result.message());
+            return <http:Conflict>{body: errorOutcome(result.message())};
         }
         if result is error {
             log:printError("Update error", result);
