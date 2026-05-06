@@ -381,9 +381,12 @@ public isolated function updatePatient(string id, pdqm:PDQmPatient patient)
 
     // Recompute blocking keys and invalidate compared pairs (non-fatal; runs after commit)
     if blocking.enabled {
-        _ = check dbClient->execute(
+        sql:ExecutionResult|sql:Error delResult = dbClient->execute(
             `DELETE FROM dedup_compared_pairs WHERE patient_id_1 = ${id} OR patient_id_2 = ${id}`
         );
+        if delResult is sql:Error {
+            log:printError(string `Failed to invalidate dedup_compared_pairs for patient ${id}`, delResult);
+        }
         pdqm:PDQmPatient|error updatedParsed = resourceJsonObj.cloneWithType(pdqm:PDQmPatient);
         if updatedParsed is pdqm:PDQmPatient {
             error? bkResult = storeBlockingKeys(id, updatedParsed);
@@ -453,52 +456,54 @@ public isolated function deletePatient(string id)
 # + patient - The updated Patient resource (active=false, link with replaced-by)
 # + return - Updated patient or error
 public isolated function resolvePatient(string subsumedId, pdqm:PDQmPatient patient)
-        returns pdqm:PDQmPatient|PatientNotFoundError|error {
+        returns pdqm:PDQmPatient|PatientNotFoundError|ConcurrencyError|error {
 
-    // Check subsumed patient exists
-    PatientRow|sql:Error existingRow = dbClient->queryRow(
-        `SELECT * FROM patients WHERE id = ${subsumedId}`
-    );
+    json resourceJsonObj = {};
 
-    if existingRow is sql:NoRowsError {
-        return error PatientNotFoundError(string `Patient ${subsumedId} not found`);
+    transaction {
+        PatientRow|sql:Error existingRow = dbClient->queryRow(
+            `SELECT * FROM patients WHERE id = ${subsumedId}`
+        );
+        if existingRow is sql:NoRowsError {
+            fail error PatientNotFoundError(string `Patient ${subsumedId} not found`);
+        }
+        if existingRow is sql:Error {
+            fail existingRow;
+        }
+
+        string now = time:utcToString(time:utcNow());
+        int newVersion = existingRow.'version + 1;
+
+        pdqm:PDQmPatient resolvedPatient = patient.clone();
+        resolvedPatient.id = subsumedId;
+        resolvedPatient.active = false;
+
+        json|error j = resolvedPatient.toJson();
+        if j is error {
+            fail j;
+        }
+        map<json> resolveMap = <map<json>>j;
+        resolveMap["meta"] = {"versionId": newVersion.toString(), "lastUpdated": now};
+        resourceJsonObj = resolveMap;
+        string resourceJson = resourceJsonObj.toJsonString();
+
+        sql:ExecutionResult updateResult = check dbClient->execute(`
+            UPDATE patients SET
+                resource_json = ${resourceJson},
+                active = false,
+                updated_at = ${now},
+                version = ${newVersion}
+            WHERE id = ${subsumedId} AND version = ${existingRow.'version}
+        `);
+        if updateResult.affectedRowCount != 1 {
+            fail error ConcurrencyError(
+                string `Patient ${subsumedId} was modified concurrently; please re-fetch and retry`);
+        }
+
+        check commit;
+    } on fail error e {
+        return e;
     }
-    if existingRow is sql:Error {
-        return existingRow;
-    }
-
-    string now = time:utcToString(time:utcNow());
-    int newVersion = existingRow.'version + 1;
-
-    // Build the resolved patient: active=false with link preserved
-    pdqm:PDQmPatient resolvedPatient = patient.clone();
-    resolvedPatient.id = subsumedId;
-    resolvedPatient.active = false;
-
-    // Serialize with updated meta
-    json|error j = resolvedPatient.toJson();
-    if j is error {
-        return j;
-    }
-    json resourceJsonObj = j;
-    json metaJson = {
-        "versionId": newVersion.toString(),
-        "lastUpdated": now
-    };
-    map<json> resolveMap = <map<json>>resourceJsonObj;
-    resolveMap["meta"] = metaJson;
-    resourceJsonObj = resolveMap;
-    string resourceJson = resourceJsonObj.toJsonString();
-
-    // Update DB: set active=false, store full JSON with link
-    _ = check dbClient->execute(`
-        UPDATE patients SET
-            resource_json = ${resourceJson},
-            active = false,
-            updated_at = ${now},
-            version = ${newVersion}
-        WHERE id = ${subsumedId}
-    `);
 
     return resourceJsonObj.cloneWithType(pdqm:PDQmPatient);
 }
@@ -804,7 +809,7 @@ public isolated function searchPatients(
                     if maidenName is string &&
                             maidenName.toLowerAscii().includes(mothersMaidenName.toLowerAscii()) {
                         matchedSeen += 1;
-                        if matchedSeen > offset {
+                        if matchedSeen > offset && results.length() < count {
                             results.push(patient);
                         }
                     }
@@ -1766,8 +1771,18 @@ public function deduplicatePatients(decimal threshold = 0.6d, DedupResult? lastR
     // Union-Find for grouping connected patients
     map<string> parent = {};
 
+    // In-memory score cache: "id1:id2" (id1 < id2) → score, populated from the stream below
+    map<decimal> pairScoreMap = {};
+
     check from var row in scoredStream
         do {
+            // Cache score for every above-threshold pair before exclusion check,
+            // so the nested loop in Step 6 can look up scores without DB calls.
+            string scoreKey = row.patient_id_1 < row.patient_id_2
+                ? row.patient_id_1 + ":" + row.patient_id_2
+                : row.patient_id_2 + ":" + row.patient_id_1;
+            pairScoreMap[scoreKey] = row.score;
+
             // Check if this pair has been rejected (shares an exclusion code)
             boolean excluded = check hasSharedExclusionCached(
                 row.patient_id_1, row.patient_id_2, exclusionCache
@@ -1827,11 +1842,9 @@ public function deduplicatePatients(decimal threshold = 0.6d, DedupResult? lastR
             foreach int j in (i + 1) ..< memberIds.length() {
                 string id1 = memberIds[i] < memberIds[j] ? memberIds[i] : memberIds[j];
                 string id2 = memberIds[i] < memberIds[j] ? memberIds[j] : memberIds[i];
-                record {|decimal score;|}|sql:Error pairScore = dbClient->queryRow(
-                    `SELECT score FROM dedup_compared_pairs WHERE patient_id_1 = ${id1} AND patient_id_2 = ${id2}`
-                );
-                if pairScore is record {|decimal score;|} {
-                    totalScore += pairScore.score;
+                decimal? cachedScore = pairScoreMap[id1 + ":" + id2];
+                if cachedScore is decimal {
+                    totalScore += cachedScore;
                     pairCount += 1;
                 }
             }

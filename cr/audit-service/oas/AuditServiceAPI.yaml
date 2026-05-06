@@ -4,7 +4,7 @@ info:
   description: This API allows posting and retrieving audit events.
   version: 1.0.0
 servers:
-  - url: http://localhost:9093
+  - url: http://localhost:9096
 security:
   - bearerAuth: []
 paths:
@@ -42,12 +42,16 @@ paths:
           schema:
             type: integer
             default: 50
+            minimum: 1
+            maximum: 100
         - name: offset
           in: query
           required: false
           schema:
             type: integer
             default: 0
+            minimum: 0
+            maximum: 10000
         - name: sortOrder
           in: query
           required: false
@@ -62,6 +66,7 @@ paths:
             application/json:
               schema:
                 type: array
+                maxItems: 100
                 items:
                   $ref: '#/components/schemas/AuditEvent'
         '500':
@@ -77,16 +82,16 @@ paths:
             schema:
               $ref: '#/components/schemas/AuditEvent'
       responses:
-        '202':
-          description: Accepted
-        '500':
-          description: Internal Server Error
         '200':
-          description: Success
+          description: Audit event written and persisted successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEvent'
+        '202':
+          description: Accepted — file write failed but event is buffered for retry
+        '500':
+          description: Internal Server Error
 components:
   securitySchemes:
     bearerAuth:
@@ -148,6 +153,7 @@ components:
           $ref: '#/components/schemas/Coding'
         subtype:
           type: array
+          maxItems: 10
           items:
             $ref: '#/components/schemas/Coding'
         action:
@@ -162,10 +168,12 @@ components:
           description: Recorded time of the audit event.
         agent:
           type: array
+          maxItems: 50
           items:
             $ref: '#/components/schemas/AuditEventAgent'
         entity:
           type: array
+          maxItems: 50
           items:
             $ref: '#/components/schemas/AuditEventEntity'
         source:

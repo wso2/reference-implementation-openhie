@@ -32,10 +32,13 @@ Thumbs.db
 
 # Dependencies
 **/Dependencies.toml.lock
-
+**/node_modules/
+# Frontend build/test artifacts
+**/dist/
+**/build/
+**/coverage/
 # Backup files
 **/backup/
 *.bak
-
 # Java heap dumps
 *.hprof

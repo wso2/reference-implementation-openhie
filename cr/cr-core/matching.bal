@@ -58,11 +58,11 @@ configurable MatchingConfig matchingConfig = {
     },
     fields: {
         identifier: {weight: 0.30d, algorithm: "exact"},
-        family: {weight: 0.20d, algorithm: "exact"},
-        given: {weight: 0.15d, algorithm: "exact"},
+        family: {weight: 0.20d, algorithm: "jarowinkler"},
+        given: {weight: 0.15d, algorithm: "jarowinkler"},
         birthDate: {weight: 0.20d, algorithm: "exact"},
         gender: {weight: 0.05d, algorithm: "exact"},
-        phone: {weight: 0.05d, algorithm: "exact"},
+        phone: {weight: 0.05d, algorithm: "jarowinkler"},
         postalCode: {weight: 0.05d, algorithm: "exact"}
     }
 };

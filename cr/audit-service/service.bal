@@ -43,20 +43,22 @@ class RetryFailedAuditEvents {
         if cache.size() > 0 {
             log:printDebug("Retrying to write failed audit events to the log file.", numberOfFailedAuditEvents = cache.size());
         }
-        while i < cache.size() {
+        string[] keys = cache.keys();
+        while i < keys.length() {
+            string key = keys[i];
             // retry to write to the audit log file
-            international401:AuditEvent|error auditEvent = cache.get(cache.keys()[i]).ensureType();
+            international401:AuditEvent|error auditEvent = cache.get(key).ensureType();
             if (auditEvent is international401:AuditEvent) {
                 io:Error? result = io:fileWriteLines(auditLogPath, [auditEvent.toJsonString()], option = io:APPEND);
                 if !(result is io:Error) {
                     // if retrying is successful, remove from the cache
-                    check cache.invalidate(cache.keys()[i]);
+                    check cache.invalidate(key);
                     log:printDebug("Successfully wrote the audit event to the log file.", id = auditEvent.id);
                 } else {
-                    i += 1;
                     log:printDebug("Failed to retry writing the audit event to the log file. Retrying...", id = auditEvent.id, 'error = result);
                 }
             }
+            i += 1;
 
         } on fail var e {
             // keep retrying
@@ -180,9 +182,10 @@ service / on new http:Listener(port) {
             string? since, string? before, int 'limit = 50, int offset = 0, string sortOrder = "desc")
             returns json|http:STATUS_INTERNAL_SERVER_ERROR {
 
-        int effectiveLimit = 'limit < 1 ? 50 : 'limit;
+        final int maxPageSize = 500;
+        int effectiveLimit = 'limit < 1 ? 50 : ('limit > maxPageSize ? maxPageSize : 'limit);
         int startIdx = offset < 0 ? 0 : offset;
-        int needed = startIdx + effectiveLimit;
+        int matchedCount = 0;
 
         // Get log files: index 0 = newest. For asc, reverse to oldest-first.
         string[] logFiles = getLogFiles();
@@ -190,14 +193,14 @@ service / on new http:Listener(port) {
             logFiles = logFiles.reverse();
         }
 
-        json[] allMatching = [];
+        json[] paginated = [];
 
         time:Utc? sinceUtc = since is string ? parseIsoTimestamp(since) : ();
         time:Utc? beforeUtc = before is string ? parseIsoTimestamp(before) : ();
 
         foreach string logFile in logFiles {
             // Early exit: we already have enough matching records
-            if allMatching.length() >= needed {
+            if paginated.length() >= effectiveLimit {
                 break;
             }
 
@@ -235,7 +238,7 @@ service / on new http:Listener(port) {
             string[] orderedLines = sortOrder == "asc" ? lines : lines.reverse();
 
             foreach string line in orderedLines {
-                if allMatching.length() >= needed {
+                if paginated.length() >= effectiveLimit {
                     break;
                 }
                 if line.trim().length() == 0 {
@@ -278,19 +281,15 @@ service / on new http:Listener(port) {
                         }
                     }
                     if include {
-                        allMatching.push(parsed);
+                        if matchedCount >= startIdx {
+                            paginated.push(parsed);
+                        }
+                        matchedCount += 1;
                     }
                 }
             }
         }
 
-        // Apply offset/limit — records are already in the correct sort order
-        json[] paginated = [];
-        int idx = startIdx;
-        while idx < needed && idx < allMatching.length() {
-            paginated.push(allMatching[idx]);
-            idx += 1;
-        }
         return paginated;
     }
 

@@ -114,13 +114,28 @@ public class H2DatabaseProvider {
     public function getUpsertPairDecision(
         string pid1, string pid2, string decisionId, string now, string rejectedBy
     ) returns sql:ParameterizedQuery {
-        return `MERGE INTO dedup_pair_decisions (
-                    patient_id_1, patient_id_2, decision_id, status, active,
-                    created_at, updated_at, resolved_at, created_by, resolved_by, resolution_reason
-                ) VALUES (
+        return `MERGE INTO dedup_pair_decisions
+                USING (VALUES (
                     ${pid1}, ${pid2}, ${decisionId}, 'rejected', false,
                     ${now}, ${now}, ${now}, ${rejectedBy}, ${rejectedBy}, 'manual_not_a_match'
-                )`;
+                )) AS src(patient_id_1, patient_id_2, decision_id, status, active,
+                          created_at, updated_at, resolved_at, created_by, resolved_by, resolution_reason)
+                ON (dedup_pair_decisions.patient_id_1 = src.patient_id_1
+                    AND dedup_pair_decisions.patient_id_2 = src.patient_id_2)
+                WHEN MATCHED THEN UPDATE SET
+                    decision_id       = src.decision_id,
+                    status            = src.status,
+                    active            = src.active,
+                    updated_at        = src.updated_at,
+                    resolved_at       = src.resolved_at,
+                    resolved_by       = src.resolved_by,
+                    resolution_reason = src.resolution_reason
+                WHEN NOT MATCHED THEN INSERT
+                    (patient_id_1, patient_id_2, decision_id, status, active,
+                     created_at, updated_at, resolved_at, created_by, resolved_by, resolution_reason)
+                VALUES
+                    (src.patient_id_1, src.patient_id_2, src.decision_id, src.status, src.active,
+                     src.created_at, src.updated_at, src.resolved_at, src.created_by, src.resolved_by, src.resolution_reason)`;
     }
 
     public function getDatabaseType() returns string => "h2";

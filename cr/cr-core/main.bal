@@ -204,7 +204,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
 
         log:printInfo("Custom: Start Async Patient Deduplication");
 
-        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER]);
+        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN]);
         if authResult is AuthenticationError {
             return <http:Unauthorized>{body: errorOutcome(authResult.message())};
         }
@@ -264,7 +264,7 @@ service /fhir/r4 on new fhirr4:Listener(9090, patientApiConfig) {
     resource function get Patient/dedupstatus(r4:FHIRContext ctx)
             returns http:Response|http:Unauthorized|http:Forbidden {
 
-        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN, ROLE_VIEWER]);
+        AuthUser|AuthenticationError|AuthorizationError authResult = authenticateAndAuthorize(ctx, [ROLE_ADMIN]);
         if authResult is AuthenticationError {
             return <http:Unauthorized>{body: errorOutcome(authResult.message())};
         }
