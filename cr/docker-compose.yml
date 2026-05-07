@@ -41,17 +41,21 @@ services:
         condition: service_healthy
       audit-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/fhir/r4/metadata || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
 
   frontend:
     build:
       context: ./cr-frontend
     ports:
-      - "5173:5173"
-    environment:
-      CR_CORE_URL: http://core:9090
-      AUDIT_SERVICE_URL: http://audit-service:9096
+      - "80:80"
     depends_on:
-      - core
+      core:
+        condition: service_healthy
 
 volumes:
   cr_pg_data:

@@ -4,8 +4,10 @@ COPY --chown=ballerina:ballerina . .
 RUN bal build
 
 FROM eclipse-temurin:21-jre-alpine
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 COPY --from=builder /home/ballerina/target/bin/*.jar app.jar
-RUN mkdir -p /tmp/audit-logs
+RUN mkdir -p /tmp/audit-logs && chown -R appuser:appgroup /app /tmp/audit-logs
 EXPOSE 9096
+USER appuser
 ENTRYPOINT ["java", "-jar", "app.jar"]
