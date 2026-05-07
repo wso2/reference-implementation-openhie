@@ -7,12 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:9090',
+        target: process.env.CR_CORE_URL ?? 'http://localhost:9090',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/audit-api': {
-        target: 'http://localhost:9096',
+        target: process.env.AUDIT_SERVICE_URL ?? 'http://localhost:9096',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/audit-api/, ''),
       },

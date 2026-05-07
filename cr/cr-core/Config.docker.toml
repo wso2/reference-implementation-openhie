@@ -1,0 +1,57 @@
+# Docker-specific configuration — uses Docker service names instead of localhost.
+# The Dockerfile copies this file as Config.toml inside the image.
+# Edit cr/cr-core/config.toml for local development.
+
+auditServiceUrl    = "http://audit-service:9096"
+auditEnabled       = true
+sourceObserverName = "client-registry"
+
+dbType     = "postgresql"
+dbUrl      = "jdbc:postgresql://postgres:5432/cr_db"
+dbUser     = "postgres"
+dbPassword = "postgres"
+
+baseUrl = "http://core:9090/fhir/r4"
+
+matchThreshold = 0.25
+dedupThreshold = 0.50
+
+[matchingConfig.gradeThresholds]
+certain  = 0.95
+probable = 0.80
+possible = 0.60
+
+[matchingConfig.fields.identifier]
+weight    = 0.30
+algorithm = "exact"
+
+[matchingConfig.fields.family]
+weight               = 0.20
+algorithm            = "jarowinkler"
+levenshteinThreshold = 0.80
+
+[matchingConfig.fields.given]
+weight               = 0.15
+algorithm            = "jarowinkler"
+levenshteinThreshold = 0.80
+
+[matchingConfig.fields.birthDate]
+weight    = 0.20
+algorithm = "exact"
+
+[matchingConfig.fields.gender]
+weight    = 0.05
+algorithm = "exact"
+
+[matchingConfig.fields.phone]
+weight    = 0.05
+algorithm = "jarowinkler"
+
+[matchingConfig.fields.postalCode]
+weight    = 0.05
+algorithm = "exact"
+
+[blocking]
+enabled               = true
+refreshBatchSize      = 5000
+maxCandidatesPerMatch = 1000
