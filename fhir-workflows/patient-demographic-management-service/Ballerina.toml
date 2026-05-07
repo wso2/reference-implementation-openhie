@@ -1,0 +1,8 @@
+[package]
+org = "wso2"
+name = "patient_demographic_query_service"
+version = "0.1.0"
+distribution = "2201.9.3"
+
+[build-options]
+observabilityIncluded = true

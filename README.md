@@ -6,6 +6,7 @@ This repository contains the reference implementation of the OpenHIE Interoperab
 
 - [Features](#features)
 - [Architecture](#architecture)
+- [Client Registry](#client-registry)
 - [Prerequisites](#prerequisites)
 - [Running the Services](#running-the-services)
 - [Endpoints](#endpoints)
@@ -30,6 +31,58 @@ The architecture consists of several components:
 - **Audit Service**: Logs audit events and publishes them to the WebSub hub and OpenSearch.
 - **WebSub Hub**: Manages subscriptions and notifications for event-driven communication.
 
+## Client Registry
+
+The **Client Registry (CR)** is a standards-based Master Patient Index (MPI) for managing FHIR R4 Patient resources within the HIE. It implements IHE PDQm/PIXm transactions with intelligent patient matching and deduplication.
+
+### CR Components
+
+- **cr-core** — Ballerina FHIR R4 backend MPI service
+- **cr-frontend** — React management UI for patient search, deduplication review, and audit log viewing
+- **audit-service** — FHIR AuditEvent service for compliance logging 
+
+### CR Features
+
+- IHE transaction support: ITI-78 (Patient Demographics Query), ITI-104 (Patient Identity Feed), ITI-119 (Patient Demographics Match)
+- Blocking-based patient deduplication with Union-Find grouping and admin review
+- Four matching algorithms: exact, levenshtein, soundex, jarowinkler — with configurable per-field weights
+- OIDC authentication (Asgardeo, Keycloak, Auth0, Okta, Azure AD) plus simulated auth for development
+
+For full documentation see [cr/README.md](cr/README.md).
+
+### Running the Client Registry
+
+```bash
+cd cr
+bash start.sh
+```
+
+Or start services individually:
+
+1. Start CR Audit Service
+   ```sh
+   cd cr/audit-service
+   bal run
+   ```
+2. Start CR Core (MPI backend)
+   ```sh
+   cd cr/cr-core
+   bal run
+   ```
+3. Start CR Frontend
+   ```sh
+   cd cr/cr-frontend
+   npm install && npm run dev
+   ```
+
+### CR Endpoints
+
+| Service | URL |
+|---|---|
+| MPI Backend (FHIR R4) | `http://localhost:9090/fhir/r4` |
+| CR Audit Service | `http://localhost:9093` |
+| CR Frontend UI | `http://localhost:5173` |
+
 ## Prerequisites
 
 | Requirement | Details |
@@ -37,6 +90,8 @@ The architecture consists of several components:
 | [Ballerina](https://ballerina.io/downloads/) | Swan Lake (tested on 2201.13.1) |
 | [Docker](https://www.docker.com/products/docker-desktop/) | For OpenSearch via Docker Compose |
 | [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `setup.sh` |
+| [Node.js](https://nodejs.org/) 18+ | For the CR Frontend (cr-frontend) |
+| [npm](https://www.npmjs.com/) 9+ | For the CR Frontend (cr-frontend) |
 
 > **Windows users:** Run the script with `bash` (Git Bash), not `sh` or PowerShell. The script calls `bal.bat` which is only resolvable in a Bash environment with the Ballerina `bin` directory on PATH.
 

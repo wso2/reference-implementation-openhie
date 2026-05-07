@@ -1,0 +1,19 @@
+# port for audit service
+PORT = 9091
+
+# websub hub url
+WEBSUB_HUB_URL = "http://localhost:9095/hub"
+
+# topic that audit service is subscribed to
+TOPIC = "audit"
+
+# topic that audit service is publishing to
+OPENSEARCH_TOPIC = "opensearch audit"
+
+# # support only for mongodb
+# [dBConfig]
+# host = "localhost"
+# port = 27017
+# dbname = "openhie_iol_ref_impl"
+# username = ""
+# password = ""
