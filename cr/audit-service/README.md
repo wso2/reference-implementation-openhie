@@ -11,11 +11,23 @@ Ballerina FHIR AuditEvent service implementing IHE ATNA (ITI-20). Receives struc
 
 ## Running
 
+### Local development
+
 ```bash
 cd audit-service
 bal run
 # Listening on http://localhost:9093
 ```
+
+### Docker
+
+```bash
+# From the cr/ directory:
+docker compose up --build audit-service
+# Listening on http://localhost:9096
+```
+
+The service listens on port **9093** when run locally and **9096** when run via Docker Compose. The `cr-core` Docker image is pre-configured to reach the audit service at `http://audit-service:9096`.
 
 ## Configuration
 
@@ -87,6 +99,7 @@ curl "http://localhost:9093/audits?limit=50&offset=50"
 ```
 audit-service/
 ├── Ballerina.toml   # Package metadata and distribution version
+├── Dockerfile       # Multi-stage build: Ballerina compiler → JRE alpine runtime
 ├── service.bal      # HTTP service (GET + POST /audits, retry task)
 ├── records.bal      # Internal InternalAuditEvent record type
 └── tests/           # Service tests

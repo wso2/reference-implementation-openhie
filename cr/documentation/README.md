@@ -10,7 +10,7 @@ This is the documentation site for the OpenHIE Client Registry, built with [Docu
 ## Running locally
 
 ```bash
-cd cr/docs-site
+cd cr/documentation
 npm install
 npm start
 ```

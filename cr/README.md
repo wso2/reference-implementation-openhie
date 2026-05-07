@@ -4,11 +4,12 @@ A standards-based **Master Patient Index (MPI)** implementation for health infor
 
 ## Components
 
-| Component | Description | Port |
-|-----------|-------------|------|
-| `cr-core/` | Ballerina FHIR R4 backend (MPI service) | 9090 |
-| `audit-service/` | Ballerina FHIR AuditEvent service (IHE ATNA) | 9093 |
-| `cr-frontend/` | React management UI | 5173 |
+| Component | Description | Local Port | Docker Port |
+|-----------|-------------|------------|-------------|
+| `cr-core/` | Ballerina FHIR R4 backend (MPI service) | 9090 | 9090 |
+| `audit-service/` | Ballerina FHIR AuditEvent service (IHE ATNA) | 9093 | 9096 |
+| `cr-frontend/` | React management UI | 5173 | 80 |
+| PostgreSQL | Relational database (Docker only) | — | 5432 |
 
 ## Features
 
@@ -23,14 +24,16 @@ A standards-based **Master Patient Index (MPI)** implementation for health infor
 
 ## Repository Structure
 
-# Service starts at http://localhost:9090/fhir/r4
 ```
-openhie_cr/
+cr/
 ├── cr-core/                  # Ballerina FHIR MPI backend
 │   ├── Ballerina.toml
-│   ├── config.toml           # Service + matching configuration
+│   ├── config.toml           # Local development configuration
+│   ├── Config.docker.toml    # Docker configuration (PostgreSQL + service names)
+│   ├── Config.toml.example   # Template for local config
+│   ├── Dockerfile            # Multi-stage build (Ballerina → JRE)
 │   ├── main.bal              # FHIR service endpoints
-│   ├── db_repository.bal     # H2 database operations
+│   ├── db_repository.bal     # Database operations
 │   ├── matching.bal          # Matching algorithms, scoring & blocking keys
 │   ├── auth.bal              # Authentication & authorization
 │   ├── audit_client.bal      # Audit service client
@@ -39,10 +42,13 @@ openhie_cr/
 │
 ├── audit-service/            # Ballerina FHIR AuditEvent service
 │   ├── Ballerina.toml
+│   ├── Dockerfile            # Multi-stage build (Ballerina → JRE)
 │   ├── service.bal           # Audit HTTP service (POST + GET /audits)
 │   └── records.bal           # Internal audit record types
 │
 ├── cr-frontend/              # React management UI
+│   ├── Dockerfile            # Multi-stage build (Node → nginx)
+│   ├── nginx.conf            # nginx config: SPA routing + reverse proxy to backend services
 │   ├── src/
 │   │   ├── api/              # API clients (patientService, auditService, matchService)
 │   │   ├── auth/             # AuthContext (Asgardeo + simulated), ProtectedRoute
@@ -55,7 +61,8 @@ openhie_cr/
 │   ├── public/Registry.png   # App logo displayed in the header
 │   └── vite.config.js        # Dev proxy: /api → 9090, /audit-api → 9093
 │
-├── start.sh                  # One-command launcher (audit-service + cr-core + cr-frontend)
+├── docker-compose.yml        # Orchestrates all four services with health checks
+├── start.sh                  # One-command local launcher (audit-service + cr-core + cr-frontend)
 ├── seed-patients.sh          # Seed sample patients
 ├── seed-large.sh             # Seed up to 500 000 patients (bulk)
 ├── seed-dedup-scenarios.sh   # Seed duplicate groups for dedup demo
@@ -64,15 +71,42 @@ openhie_cr/
 
 ## Prerequisites
 
+### Local development
+
 | Tool | Version |
 |------|---------|
 | [Ballerina](https://ballerina.io/downloads/) | 2201.13.1 (Swan Lake Update 13) |
 | [Node.js](https://nodejs.org/) | 18+ |
 | npm | 9+ |
 
+### Docker
+
+| Tool | Notes |
+|------|-------|
+| [Docker](https://docs.docker.com/get-docker/) | Engine 20+ |
+| [Docker Compose](https://docs.docker.com/compose/) | v2 (bundled with Docker Desktop) |
+
 ## Quick Start
 
-### One-Command Start (recommended)
+### Docker (recommended)
+
+```bash
+cd cr
+docker compose up --build
+```
+
+All four services start in dependency order (postgres → audit-service → cr-core → frontend) with health checks. The first build takes a few minutes while Ballerina compiles.
+
+```
+PostgreSQL     → localhost:5432
+Audit Service  → http://localhost:9096
+MPI Backend    → http://localhost:9090/fhir/r4
+Frontend       → http://localhost:80
+```
+
+> **Config note:** The cr-core image bundles `Config.docker.toml` as `Config.toml` at build time. This file uses Docker service names (`postgres`, `audit-service`) instead of `localhost` and connects to PostgreSQL. For production, mount a custom `Config.toml` at runtime rather than baking credentials into the image layer (see the TODO comment in `cr-core/Dockerfile`).
+
+### One-Command Local Start
 
 ```bash
 bash start.sh
@@ -753,20 +787,44 @@ Preferences can be reset to defaults via the **Reset to Defaults** button.
 
 ## Configuration
 
-In `cr-core/config.toml`:
+Two config files exist for the two deployment modes:
+
+| File | Used by |
+|------|---------|
+| `cr-core/config.toml` | Local development (`bal run`) |
+| `cr-core/Config.docker.toml` | Docker (`docker compose up`) — baked into the image at build time |
+
+`cr-core/config.toml` (local development):
 ```toml
 # Audit Service
 auditServiceUrl = "http://localhost:9093"
 auditEnabled = true
 sourceObserverName = "client-registry"
 
-# Database
+# Database (H2 embedded)
 dbUrl = "jdbc:h2:file:./data/mpi;AUTO_SERVER=TRUE"
 dbUser = "sa"
 dbPassword = ""
 
 # Base URL
 baseUrl = "http://localhost:9090/fhir/r4"
+```
+
+`cr-core/Config.docker.toml` (Docker):
+```toml
+# Audit Service (Docker service name + Docker port)
+auditServiceUrl = "http://audit-service:9096"
+auditEnabled = true
+sourceObserverName = "client-registry"
+
+# Database (PostgreSQL)
+dbType     = "postgresql"
+dbUrl      = "jdbc:postgresql://postgres:5432/cr_db"
+dbUser     = "postgres"
+dbPassword = "postgres"
+
+# Base URL
+baseUrl = "http://core:9090/fhir/r4"
 ```
 
 ### Patient Matching Configuration
