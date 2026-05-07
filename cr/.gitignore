@@ -1,0 +1,44 @@
+# Ballerina build artifacts
+target/
+**/target/
+output/
+**/output/
+
+# Compiled files
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.lock.db
+
+# Logs
+*.log
+*.mv.db
+*.trace.db
+
+# Configuration files (may contain secrets)
+Config.toml
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+**/Dependencies.toml.lock
+**/node_modules/
+# Frontend build/test artifacts
+**/dist/
+**/build/
+**/coverage/
+# Backup files
+**/backup/
+*.bak
+# Java heap dumps
+*.hprof

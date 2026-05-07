@@ -1,12 +1,12 @@
-// Copyright (c) 2025 WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-//
-// WSO2 Inc. licenses this file to you under the Apache License,
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+
+// WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
 // in compliance with the License.
 // You may obtain a copy of the License at
-//
+
 // http://www.apache.org/licenses/LICENSE-2.0
-//
+
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,8 +23,10 @@ type InternalAuditEvent record {|
     string subTypeCode;
     // Value Set http://hl7.org/fhir/ValueSet/audit-event-action
     string actionCode;
-    // Value Set http://hl7.org/fhir/ValueSet/audit-event-outcome 
+    // Value Set http://hl7.org/fhir/ValueSet/audit-event-outcome
     string outcomeCode;
+    // Free text description of the outcome (e.g., failure reason)
+    string outcomeDesc = "";
     string recordedTime;
     // actor involved in the event
     // Value Set http://hl7.org/fhir/ValueSet/participation-role-type
@@ -43,11 +45,3 @@ type InternalAuditEvent record {|
     string entityWhatReference;
 
 |};
-
-public type DBConfig record {
-    string host;
-    int port;
-    string dbname;
-    string username;
-    string password;
-};

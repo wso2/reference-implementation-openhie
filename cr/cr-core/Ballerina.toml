@@ -1,0 +1,17 @@
+[package]
+org = "healthcare_samples"
+name = "client_registry"
+version = "1.0.0"
+distribution = "2201.13.1"
+
+# Database Drivers — both included so dbType can be switched at runtime
+[[platform.java17.dependency]]
+groupId = "com.h2database"
+artifactId = "h2"
+version = "2.2.224"
+
+[[platform.java17.dependency]]
+groupId = "org.postgresql"
+artifactId = "postgresql"
+version = "42.7.4"
+

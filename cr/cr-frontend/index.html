@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" data-color-scheme="light" data-mui-color-scheme="light" style="color-scheme: light;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light only" />
+    <link rel="icon" type="image/png" href="/Registry.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Client Registry</title>
+    <script>
+      // Force light mode before page renders
+      document.documentElement.setAttribute('data-color-scheme', 'light');
+      document.documentElement.setAttribute('data-mui-color-scheme', 'light');
+      localStorage.setItem('mui-mode', 'light');
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

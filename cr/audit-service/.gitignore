@@ -4,9 +4,6 @@
 # Log file
 *.log
 
-# Logs directory
-logs/
-
 # BlueJ files
 *.ctxt
 
@@ -27,4 +24,5 @@ hs_err_pid*
 
 # Ballerina
 target/
+Config.toml
 .vscode/

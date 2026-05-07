@@ -1,0 +1,75 @@
+# Test Configuration
+auditServiceUrl = "http://localhost:9096"
+auditEnabled = true
+sourceObserverName = "client-registry-test"
+
+# # Database type: "h2" (default, embedded) or "postgresql"
+# dbType = "h2"
+
+# # --- H2 (default, no external server needed) ---
+# dbUrl = "jdbc:h2:file:./data/cr-db"
+# dbUser = "sa"
+# dbPassword = ""
+
+# --- PostgreSQL (start with: docker-compose -f cr/docker-compose.yml up -d) ---
+dbType     = "postgresql"
+dbUrl      = "jdbc:postgresql://localhost:5432/cr_db"
+dbUser     = "postgres"
+dbPassword = "postgres"
+
+baseUrl = "http://localhost:9090/fhir/r4"
+
+# =============================================
+# Matching Configuration
+# =============================================
+# Algorithms: "exact", "levenshtein", "soundex", "jarowinkler"
+# To enable fuzzy matching, change algorithm per field (exact, levenshtein, soundex, jarowinkler).
+# jarowinkler optional params:
+#   jaroWinklerThreshold    - minimum similarity to count as match (default 0.85)
+#   jaroWinklerPrefixScale  - prefix bonus scaling factor (default 0.1, max 0.25)
+
+matchThreshold = 0.25       # minimum score for $match endpoint
+dedupThreshold = 0.50       # minimum score for dedup grouping
+
+[matchingConfig.gradeThresholds]
+certain = 0.95
+probable = 0.80
+possible = 0.60
+
+[matchingConfig.fields.identifier]
+weight = 0.30
+algorithm = "exact"
+
+[matchingConfig.fields.family]
+weight = 0.20
+algorithm = "soundex"
+levenshteinThreshold = 0.80
+
+[matchingConfig.fields.given]
+weight = 0.15
+algorithm = "soundex"
+levenshteinThreshold = 0.80
+
+[matchingConfig.fields.birthDate]
+weight = 0.20
+algorithm = "exact"
+
+[matchingConfig.fields.gender]
+weight = 0.05
+algorithm = "exact"
+
+[matchingConfig.fields.phone]
+weight = 0.05
+algorithm = "jarowinkler"
+
+[matchingConfig.fields.postalCode]
+weight = 0.05
+algorithm = "exact"
+
+# =============================================
+# Blocking Configuration (performance tuning)
+# =============================================
+[blocking]
+enabled = true                    # false reverts to full-scan (for debugging)
+refreshBatchSize = 5000          # patients per blocking key refresh batch
+maxCandidatesPerMatch = 1000     # safety cap per $match query
