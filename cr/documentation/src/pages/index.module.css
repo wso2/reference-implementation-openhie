@@ -1,0 +1,70 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.componentPills {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.features {
+  padding: 4rem 0;
+  background: var(--ifm-background-surface-color);
+}
+
+.featureItem {
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.featureIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.callout {
+  padding: 3rem 0;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.callout h2 {
+  margin-bottom: 0.75rem;
+}
+
+.callout ul {
+  margin-bottom: 1.5rem;
+}
+
+.codeBlock {
+  background: var(--ifm-code-background);
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}

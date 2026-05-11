@@ -1,13 +1,5 @@
 version: "3.8"
 
-# PostgreSQL service for CR-Core testing.
-# Start with: docker-compose up -d
-# Then set in cr-core/Config.toml:
-#   dbType     = "postgresql"
-#   dbUrl      = "jdbc:postgresql://localhost:5432/cr_db"
-#   dbUser     = "postgres"
-#   dbPassword = "postgres"
-
 services:
   postgres:
     image: postgres:16
@@ -25,5 +17,46 @@ services:
       timeout: 5s
       retries: 5
 
+  audit-service:
+    build:
+      context: ./audit-service
+    ports:
+      - "9096:9096"
+    volumes:
+      - cr_audit_logs:/tmp/audit-logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9096/audits?limit=1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+
+  core:
+    build:
+      context: ./cr-core
+    ports:
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/fhir/r4/metadata || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./cr-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      core:
+        condition: service_healthy
+
 volumes:
   cr_pg_data:
+  cr_audit_logs:

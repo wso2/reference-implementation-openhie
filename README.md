@@ -1,146 +1,136 @@
-# OpenHIE-Interoperability Layer Reference Implementation
+# OpenHIE Reference Implementation
 
-This repository contains the reference implementation of the OpenHIE Interoperability Layer (IOL). The IOL facilitates the exchange of health information between different systems and services, ensuring interoperability and seamless data flow.
+This repository contains the reference implementation of the OpenHIE architecture — a set of interoperable health information services that collectively enable standards-based health data exchange across a Health Information Exchange (HIE).
 
-## Table of Contents
+## Repository Structure
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Client Registry](#client-registry)
-- [Prerequisites](#prerequisites)
-- [Running the Services](#running-the-services)
-- [Endpoints](#endpoints)
+```
+reference-implementation-openhie/
+├── iol/          # Interoperability Layer (IOL)
+└── cr/           # Client Registry (MPI)
+```
 
-## Features
+## Components
 
-- **FHIR Support**: Supports FHIR-based interactions for patient demographics and other healthcare data.
-- **HL7v2 Support**: Handles HL7v2 messages for various healthcare workflows.
-- **Audit Logging**: Logs audit events and transactions for monitoring and compliance.
-- **WebSub Hub**: Uses WebSub for event-driven communication and notifications.
-- **OpenSearch Integration**: Publishes audit and transaction logs to OpenSearch for indexing and search.
+### Interoperability Layer (`iol/`)
 
-## Architecture
+The IOL is the central message broker and routing engine of the HIE. It receives incoming FHIR and HL7v2 messages, routes them to the appropriate downstream services, and publishes audit events.
 
-The architecture consists of several components:
+| Service | Description | Port |
+|---|---|---|
+| `iol-core/` | Core message router (HTTP + TCP listeners) | 9080 / 9081 |
+| `audit-service/` | Audit event logging and OpenSearch publishing | 9091 |
+| `websubhub/hub/` | WebSub event hub for pub/sub notifications | 9095 |
+| `fhir-workflows/` | FHIR workflow services (e.g. patient demographics) | — |
+| `opensearch/` | OpenSearch dashboard configuration | 5601 |
 
-![Architecture Diagram](docs/architecture-diagram.png)
+See [iol/README.md](iol/README.md) for setup and running instructions.
 
-- **TCP Listener**: Receives HL7v2 messages and routes them to the appropriate services.
-- **HTTP Listener**: Handles FHIR-based HTTP requests and routes them to the appropriate services.
-- **Router**: Determines the appropriate route for incoming messages and forwards them to the target services.
-- **Audit Service**: Logs audit events and publishes them to the WebSub hub and OpenSearch.
-- **WebSub Hub**: Manages subscriptions and notifications for event-driven communication.
+---
 
-## Client Registry
+### Client Registry (`cr/`)
 
-The **Client Registry (CR)** is a standards-based Master Patient Index (MPI) for managing FHIR R4 Patient resources within the HIE. It implements IHE PDQm/PIXm transactions with intelligent patient matching and deduplication.
+The CR is a standards-based **Master Patient Index (MPI)** that manages FHIR R4 `Patient` resources within the HIE. It implements IHE PDQm/PIXm transactions with intelligent patient matching, deduplication, and a management UI.
 
-### CR Components
+| Service | Description | Port |
+|---|---|---|
+| `cr-core/` | Ballerina FHIR R4 backend (MPI service) | 9090 |
+| `audit-service/` | FHIR AuditEvent service (IHE ATNA) | 9093 |
+| `cr-frontend/` | React management UI | 5173 |
+| `documentation/` | Docusaurus documentation site | — |
 
-- **cr-core** — Ballerina FHIR R4 backend MPI service
-- **cr-frontend** — React management UI for patient search, deduplication review, and audit log viewing
-- **audit-service** — FHIR AuditEvent service for compliance logging 
+See [cr/README.md](cr/README.md) for setup and running instructions.
 
-### CR Features
+---
 
-- IHE transaction support: ITI-78 (Patient Demographics Query), ITI-104 (Patient Identity Feed), ITI-119 (Patient Demographics Match)
-- Blocking-based patient deduplication with Union-Find grouping and admin review
-- Four matching algorithms: exact, levenshtein, soundex, jarowinkler — with configurable per-field weights
-- OIDC authentication (Asgardeo, Keycloak, Auth0, Okta, Azure AD) plus simulated auth for development
+## Quick Start
 
-For full documentation see [cr/README.md](cr/README.md).
+### Run the IOL
 
-### Running the Client Registry
+```bash
+cd iol
+bash setup.sh
+```
+
+### Run the Client Registry
 
 ```bash
 cd cr
 bash start.sh
 ```
 
-Or start services individually:
+---
 
-1. Start CR Audit Service
-   ```sh
-   cd cr/audit-service
-   bal run
-   ```
-2. Start CR Core (MPI backend)
-   ```sh
-   cd cr/cr-core
-   bal run
-   ```
-3. Start CR Frontend
-   ```sh
-   cd cr/cr-frontend
-   npm install && npm run dev
-   ```
+## Docker
 
-### CR Endpoints
+Both components ship with Docker support for containerised deployment.
 
-| Service | URL |
+### Client Registry — Docker Compose
+
+The CR `docker-compose.yml` starts the full stack (PostgreSQL + audit service + CR core + frontend) with health-checked startup ordering:
+
+```bash
+cd cr
+docker compose up --build
+```
+
+| Container | Image | Port |
+|---|---|---|
+| `postgres` | `postgres:16` | 5432 |
+| `audit-service` | built from `cr/audit-service/Dockerfile` | 9096 |
+| `core` | built from `cr/cr-core/Dockerfile` | 9090 |
+| `frontend` | built from `cr/cr-frontend/Dockerfile` | 80 |
+
+The frontend container is served on port **80** when running via Docker (instead of 5173 in dev mode).
+
+### IOL — OpenSearch via Docker Compose
+
+The IOL uses Docker Compose only for the OpenSearch cluster and dashboard:
+
+```bash
+cd iol/opensearch
+docker compose up
+```
+
+| Container | Port |
 |---|---|
-| MPI Backend (FHIR R4) | `http://localhost:9090/fhir/r4` |
-| CR Audit Service | `http://localhost:9093` |
-| CR Frontend UI | `http://localhost:5173` |
+| `opensearch-node1` | 9200, 9600 |
+| `opensearch-node2` | — |
+| `opensearch-dashboards` | 5601 |
+
+OpenSearch credentials:
+```
+Username: admin
+Password: openHIEdemo!123
+```
+
+Access the dashboard at `http://localhost:5601` — use the **Global** tenant and navigate to **Dashboards → openhie-ref-impl**.
+
+### Building Individual Docker Images
+
+Each CR service has its own Dockerfile and can be built independently:
+
+```bash
+# CR Core
+docker build -t cr-core ./cr/cr-core
+
+# CR Audit Service
+docker build -t cr-audit-service ./cr/audit-service
+
+# CR Frontend
+docker build -t cr-frontend ./cr/cr-frontend
+```
+
+---
 
 ## Prerequisites
 
 | Requirement | Details |
 |---|---|
 | [Ballerina](https://ballerina.io/downloads/) | Swan Lake (tested on 2201.13.1) |
-| [Docker](https://www.docker.com/products/docker-desktop/) | For OpenSearch via Docker Compose |
-| [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `setup.sh` |
-| [Node.js](https://nodejs.org/) 18+ | For the CR Frontend (cr-frontend) |
-| [npm](https://www.npmjs.com/) 9+ | For the CR Frontend (cr-frontend) |
+| [Docker](https://www.docker.com/products/docker-desktop/) | Required for OpenSearch (IOL) and full CR stack |
+| [Node.js](https://nodejs.org/) 18+ | For the CR Frontend (local dev only) |
+| [npm](https://www.npmjs.com/) 9+ | For the CR Frontend (local dev only) |
+| [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `.sh` scripts |
 
-> **Windows users:** Run the script with `bash` (Git Bash), not `sh` or PowerShell. The script calls `bal.bat` which is only resolvable in a Bash environment with the Ballerina `bin` directory on PATH.
-
-## Running the Services
-
-Run the setup.sh script to run all the services for the OpenHIE Interoperability Layer Reference Implementation.
-
-```bash
-bash setup.sh
-```
-
-**Note:** The setup script will start all services in the background using their default ports. Logs for each service can be found in the `logs` directory.
-
-**Note:** To access opensearch dashboard,
-```
-USERNAME="admin"
-PASSWORD="openHIEdemo!123"
-```
-Use global Tenant and go to dashboards and select `openhie-ref-impl`
-
-If you want to run the services individually, follow the steps below:
-
-1. Start WebSubHub  
-   ```sh
-   cd websubhub/hub
-   bal run
-2. Start IoL Core   
-   ```sh
-   cd iol-core
-   bal run
-3. Start Audit Service  
-   ```sh
-   cd audit-service
-   bal run
-4. Start FHIR Workflow  
-   ```sh
-   cd fhir-workflows/patient-demographic-management-service
-   bal run
-5. Start OpenSearch Dashboard
-   ```sh
-   cd opensearch
-   docker-compose up
-   ```
-
-
-## Endpoints
-
-- HTTP Listener : ```http://localhost:9080```
-- TCP Listener : ```tcp://localhost:9081```
-- Audit Service : ```http://localhost:9091/audit```
-- WebSub Hub : ```http://localhost:9095/hub```
-- OpenSearch Dashboard : ```http://localhost:5601```
+> **Windows users:** Run scripts with `bash` (Git Bash), not `sh` or PowerShell.

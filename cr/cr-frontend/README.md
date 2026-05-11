@@ -83,7 +83,7 @@ All `patientService.js` calls use `/api/fhir/r4/...` and all `auditService.js` c
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20+
 - The MPI backend (`cr-core`) running on port 9090
 - The audit service (`audit-service`) running on port 9093
 
@@ -103,6 +103,23 @@ Copy `.env.example` to `.env` and set `VITE_AUTH_MODE` before starting. For deve
 npm run build
 # Output in dist/
 ```
+
+### Docker
+
+The frontend is served by nginx on port **80** when run via Docker Compose. nginx handles SPA routing (all paths fall back to `index.html`) and reverse-proxies API requests to the backend services using their Docker service names:
+
+| nginx location | Proxied to |
+|----------------|-----------|
+| `/api/` | `http://core:9090/` |
+| `/audit-api/` | `http://audit-service:9096/` |
+
+```bash
+# From the cr/ directory:
+docker compose up --build frontend
+# App at http://localhost:80
+```
+
+The `nginx.conf` in this directory is copied into the image at build time — edit it to change proxy targets or add additional routes.
 
 ## Authentication
 
