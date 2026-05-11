@@ -62,7 +62,7 @@ function HomepageHero() {
         <p className="hero__subtitle">
           A standards-based <strong>Master Patient Index (MPI)</strong> for health information exchanges.
           <br />
-          FHIR R4 · IHE PDQm / PIXm / ITI-119 · Ballerina + React
+          FHIR R4 · IHE PDQm  · Ballerina + React
         </p>
         <div className={styles.buttons}>
           <Link

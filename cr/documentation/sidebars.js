@@ -13,6 +13,7 @@ const sidebars = {
       items: [
         'getting-started/prerequisites',
         'getting-started/quick-start',
+        'getting-started/docker',
         'getting-started/seeding-data',
       ],
     },
@@ -64,7 +65,7 @@ const sidebars = {
       label: 'Guides',
       items: [
         'guides/demo-scenarios',
-        'guides/h2-console',
+        'guides/database-console',
       ],
     },
     {
