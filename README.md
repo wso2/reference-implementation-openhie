@@ -42,6 +42,17 @@ The CR is a standards-based **Master Patient Index (MPI)** that manages FHIR R4 
 See [cr/README.md](cr/README.md) for setup and running instructions.
 
 ---
+## Prerequisites
+
+| Requirement | Details |
+|---|---|
+| [Ballerina](https://ballerina.io/downloads/) | Swan Lake (tested on 2201.13.1) |
+| [Docker](https://www.docker.com/products/docker-desktop/) | Required for OpenSearch (IOL) and full CR stack |
+| [Node.js](https://nodejs.org/) 18+ | For the CR Frontend (local dev only) |
+| [npm](https://www.npmjs.com/) 9+ | For the CR Frontend (local dev only) |
+| [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `.sh` scripts |
+
+> **Windows users:** Run scripts with `bash` (Git Bash), PowerShell.
 
 ## Quick Start
 
@@ -123,14 +134,3 @@ docker build -t cr-frontend ./cr/cr-frontend
 
 ---
 
-## Prerequisites
-
-| Requirement | Details |
-|---|---|
-| [Ballerina](https://ballerina.io/downloads/) | Swan Lake (tested on 2201.13.1) |
-| [Docker](https://www.docker.com/products/docker-desktop/) | Required for OpenSearch (IOL) and full CR stack |
-| [Node.js](https://nodejs.org/) 18+ | For the CR Frontend (local dev only) |
-| [npm](https://www.npmjs.com/) 9+ | For the CR Frontend (local dev only) |
-| [Git Bash](https://git-scm.com/downloads) | **Windows only** — required to run `.sh` scripts |
-
-> **Windows users:** Run scripts with `bash` (Git Bash), not `sh` or PowerShell.
